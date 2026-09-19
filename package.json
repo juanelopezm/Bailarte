@@ -1,0 +1,16 @@
+{
+  "name": "dance-to-art",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm:dev -w server\" \"npm:dev -w client\"",
+    "fetch-models": "node scripts/fetch-models.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "10.0.5"
+  }
+}

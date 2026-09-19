@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DanzArte — Baila. Exprésate. Conviértete en arte.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#241335;
+    --ink-soft:#4a3866;
+    --paper:#fffaf2;
+    --paper-2:#fff2e2;
+    --purple-deep:#2a1245;
+    --purple:#4b1d73;
+    --magenta:#c9327e;
+    --coral:#ff6b5e;
+    --orange:#ff9f4a;
+    --gold:#ffc94a;
+    --teal:#0fb89c;
+    --line:#e9dcc8;
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{
+    margin:0;
+    padding:0;
+  }
+
+  body{
+    font-family:'Inter', system-ui, -apple-system, "Segoe UI", sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(circle at 15% 10%, rgba(255,159,74,0.35), transparent 45%),
+      radial-gradient(circle at 85% 90%, rgba(201,50,126,0.35), transparent 50%),
+      linear-gradient(160deg, #1c0e30 0%, #2a1245 45%, #4b1d73 100%);
+    min-height:100vh;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:28px 16px;
+  }
+
+  .page{
+    width:100%;
+    max-width:850px;
+    background:var(--paper);
+    border-radius:22px;
+    overflow:hidden;
+    box-shadow:0 30px 70px -20px rgba(20,8,40,0.6), 0 0 0 1px rgba(255,255,255,0.06);
+    position:relative;
+  }
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative;
+    padding:34px 44px 40px;
+    color:var(--paper);
+    background:
+      radial-gradient(circle at 20% -10%, rgba(255,201,74,0.55), transparent 55%),
+      radial-gradient(circle at 100% 10%, rgba(255,107,94,0.5), transparent 50%),
+      linear-gradient(120deg, #3a1160 0%, #7a1f7d 45%, #c9327e 75%, #ff9f4a 130%);
+    overflow:hidden;
+  }
+
+  .hero::after{
+    content:"";
+    position:absolute;
+    left:0; right:0; bottom:-1px;
+    height:26px;
+    background:var(--paper);
+    -webkit-mask-image: radial-gradient(circle at 30px 0, transparent 15px, black 16px);
+    mask-image: radial-gradient(circle at 30px 0, transparent 15px, black 16px);
+    -webkit-mask-repeat: repeat-x;
+    mask-repeat: repeat-x;
+    -webkit-mask-size: 60px 26px;
+    mask-size: 60px 26px;
+  }
+
+  .hero-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+  }
+
+  .kicker{
+    font-size:11.5px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    font-weight:700;
+    opacity:.92;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+
+  .kicker .dot{
+    width:7px; height:7px; border-radius:50%;
+    background:var(--gold);
+    box-shadow:0 0 0 3px rgba(255,201,74,.28);
+  }
+
+  .brandmark{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    opacity:.95;
+  }
+  .brandmark svg{ width:20px; height:20px; }
+
+  h1.title{
+    font-family:'Fraunces', serif;
+    font-weight:700;
+    font-size:clamp(40px, 7vw, 62px);
+    line-height:1;
+    margin:14px 0 8px;
+    letter-spacing:-.01em;
+  }
+
+  .title-flourish{ color:var(--gold); }
+
+  .tagline{
+    font-family:'Fraunces', serif;
+    font-style:italic;
+    font-weight:500;
+    font-size:19px;
+    max-width:520px;
+    opacity:.96;
+    margin:0;
+  }
+
+  /* ---------- BODY SECTIONS ---------- */
+  .content{
+    padding:26px 44px 8px;
+  }
+
+  .lede{
+    font-size:15.5px;
+    line-height:1.55;
+    color:var(--ink-soft);
+    max-width:100%;
+    margin:0 0 6px;
+    border-left:3px solid var(--coral);
+    padding-left:16px;
+  }
+
+  section{
+    margin-top:26px;
+  }
+
+  .eyebrow{
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    font-weight:800;
+    color:var(--magenta);
+    margin:0 0 6px;
+  }
+
+  h2.h-section{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:24px;
+    margin:0 0 14px;
+    color:var(--purple-deep);
+  }
+
+  /* ---------- FLOW ---------- */
+  .flow{
+    display:grid;
+    grid-template-columns:repeat(6, 1fr);
+    gap:10px;
+  }
+
+  .flow-step{
+    position:relative;
+    background:var(--paper-2);
+    border-radius:14px;
+    padding:14px 10px 12px;
+    text-align:center;
+    border:1px solid var(--line);
+  }
+
+  .flow-step .num{
+    position:absolute;
+    top:6px;
+    right:9px;
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:11px;
+    color:rgba(74,56,102,0.35);
+  }
+
+  .flow-icon{
+    width:34px;
+    height:34px;
+    margin:0 auto 8px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+  }
+  .flow-icon svg{ width:18px; height:18px; }
+
+  .f1 .flow-icon{ background:linear-gradient(135deg,var(--coral),var(--orange)); }
+  .f2 .flow-icon{ background:linear-gradient(135deg,var(--magenta),var(--coral)); }
+  .f3 .flow-icon{ background:linear-gradient(135deg,var(--purple),var(--magenta)); }
+  .f4 .flow-icon{ background:linear-gradient(135deg,var(--gold),var(--orange)); }
+  .f5 .flow-icon{ background:linear-gradient(135deg,var(--teal),#4bb3a0); }
+  .f6 .flow-icon{ background:linear-gradient(135deg,var(--orange),var(--gold)); }
+
+  .flow-step h3{
+    font-size:12.5px;
+    font-weight:800;
+    margin:0 0 4px;
+    color:var(--ink);
+  }
+
+  .flow-step p{
+    font-size:10.8px;
+    line-height:1.32;
+    margin:0;
+    color:var(--ink-soft);
+  }
+
+  .flow-arrow{
+    display:none;
+  }
+
+  /* ---------- FEATURES ---------- */
+  .features{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:12px;
+  }
+
+  .feature-card{
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:12px 13px;
+  }
+
+  .feature-icon{
+    flex:none;
+    width:32px;
+    height:32px;
+    border-radius:9px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+  }
+  .feature-icon svg{ width:17px; height:17px; }
+
+  .feature-card:nth-child(1) .feature-icon{ background:linear-gradient(135deg,var(--coral),var(--magenta)); }
+  .feature-card:nth-child(2) .feature-icon{ background:linear-gradient(135deg,var(--gold),var(--coral)); }
+  .feature-card:nth-child(3) .feature-icon{ background:linear-gradient(135deg,var(--purple),var(--magenta)); }
+  .feature-card:nth-child(4) .feature-icon{ background:linear-gradient(135deg,var(--orange),var(--gold)); }
+  .feature-card:nth-child(5) .feature-icon{ background:linear-gradient(135deg,var(--teal),#3aa0c9); }
+  .feature-card:nth-child(6) .feature-icon{ background:linear-gradient(135deg,var(--magenta),var(--purple)); }
+
+  .feature-card h3{
+    font-size:12.8px;
+    font-weight:800;
+    margin:0 0 2px;
+    color:var(--ink);
+  }
+  .feature-card p{
+    font-size:11px;
+    line-height:1.35;
+    margin:0;
+    color:var(--ink-soft);
+  }
+
+  /* ---------- PRINCIPLE ---------- */
+  .principle{
+    margin-top:26px;
+    border-radius:18px;
+    padding:22px 30px;
+    color:var(--paper);
+    background:
+      radial-gradient(circle at 90% 0%, rgba(255,201,74,0.35), transparent 55%),
+      linear-gradient(120deg, #2a1245 0%, #5a1a6e 55%, #c9327e 130%);
+    position:relative;
+    overflow:hidden;
+  }
+
+  .principle::before{
+    content:"";
+    position:absolute;
+    width:180px; height:180px;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(255,255,255,0.12), transparent 70%);
+    top:-60px; right:-40px;
+  }
+
+  .principle .eyebrow{ color:var(--gold); }
+
+  .principle-quote{
+    font-family:'Fraunces', serif;
+    font-style:italic;
+    font-weight:600;
+    font-size:clamp(21px, 3.4vw, 27px);
+    line-height:1.22;
+    margin:2px 0 10px;
+    max-width:560px;
+  }
+
+  .principle-quote .accent{ color:var(--gold); font-style:normal; }
+
+  .principle p.support{
+    font-size:13px;
+    line-height:1.55;
+    max-width:600px;
+    margin:0;
+    opacity:.94;
+  }
+
+  /* ---------- CLOSING ---------- */
+  .closing{
+    text-align:center;
+    padding:30px 20px 8px;
+  }
+
+  .closing .cta{
+    font-family:'Fraunces', serif;
+    font-weight:700;
+    font-size:clamp(24px, 4vw, 32px);
+    background:linear-gradient(100deg, var(--magenta), var(--coral) 45%, var(--orange) 75%, var(--gold));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    margin:0 0 8px;
+  }
+
+  .closing .sub{
+    font-size:13px;
+    color:var(--ink-soft);
+    margin:0;
+  }
+
+  footer.strip{
+    margin-top:24px;
+    height:14px;
+    background:linear-gradient(90deg, var(--purple-deep), var(--magenta), var(--coral), var(--orange), var(--gold));
+  }
+
+  .footer-tag{
+    text-align:center;
+    font-size:10.5px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:#b9a9c9;
+    background:var(--purple-deep);
+    padding:8px 10px;
+    font-weight:700;
+  }
+
+  /* ---------- PRINT ---------- */
+  @page{
+    size:A4;
+    margin:0;
+  }
+
+  @media print{
+    body{
+      background:#fff;
+      padding:0;
+      min-height:0;
+      display:block;
+    }
+    .page{
+      max-width:100%;
+      width:100%;
+      box-shadow:none;
+      border-radius:0;
+      page-break-inside:avoid;
+    }
+    section, .principle, .flow-step, .feature-card{
+      page-break-inside:avoid;
+    }
+
+    /* compact vertical rhythm so everything lands on one printed page */
+    .hero{ padding:18px 40px 20px; }
+    .hero-top{ margin-bottom:0; }
+    h1.title{ margin:8px 0 4px; font-size:46px; }
+    .tagline{ font-size:16px; }
+    .hero::after{ height:16px; }
+
+    .content{ padding:14px 40px 2px; }
+    .lede{ font-size:13px; line-height:1.42; margin-bottom:2px; padding-left:13px; }
+
+    section{ margin-top:14px; }
+    .eyebrow{ margin-bottom:3px; font-size:10px; }
+    h2.h-section{ font-size:19px; margin-bottom:8px; }
+
+    .flow{ gap:8px; }
+    .flow-step{ padding:9px 7px 8px; border-radius:11px; }
+    .flow-icon{ width:26px; height:26px; margin-bottom:5px; }
+    .flow-icon svg{ width:14px; height:14px; }
+    .flow-step h3{ font-size:11px; margin-bottom:2px; }
+    .flow-step p{ font-size:9.3px; line-height:1.22; }
+
+    .features{ gap:8px; }
+    .feature-card{ padding:9px 10px; gap:8px; border-radius:11px; }
+    .feature-icon{ width:26px; height:26px; border-radius:8px; }
+    .feature-icon svg{ width:14px; height:14px; }
+    .feature-card h3{ font-size:11.3px; }
+    .feature-card p{ font-size:9.6px; line-height:1.28; }
+
+    .principle{ padding:14px 24px; margin-top:14px; border-radius:14px; }
+    .principle-quote{ font-size:20px; margin:2px 0 6px; }
+    .principle p.support{ font-size:11px; line-height:1.4; }
+
+    .closing{ padding:14px 20px 2px; }
+    .closing .cta{ font-size:21px; margin-bottom:4px; }
+    .closing .sub{ font-size:10.5px; }
+
+    footer.strip{ height:9px; margin-top:12px; }
+    .footer-tag{ padding:5px 10px; font-size:8.5px; }
+  }
+
+  @media (max-width:720px){
+    .flow{ grid-template-columns:repeat(3, 1fr); }
+    .features{ grid-template-columns:repeat(2, 1fr); }
+    .hero, .content{ padding-left:24px; padding-right:24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-top">
+      <div class="kicker"><span class="dot"></span>Una experiencia de fiesta en vivo</div>
+      <div class="brandmark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.9 4.9l2.8 2.8"/><path d="M16.3 16.3l2.8 2.8"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.9 19.1l2.8-2.8"/><path d="M16.3 7.7l2.8-2.8"/></svg>
+      </div>
+    </div>
+    <h1 class="title">Danz<span class="title-flourish">Arte</span></h1>
+    <p class="tagline">Tu cuerpo es el pincel. Tu expresión, la paleta.</p>
+  </div>
+
+  <div class="content">
+
+    <!-- QUÉ ES -->
+    <p class="lede">
+      DanzArte es una experiencia en vivo para fiestas: alguien se planta frente a una cámara y baila.
+      Mientras lo hace, la aplicación observa —no escucha— para descubrir, en su rostro, su cuerpo y su energía,
+      la cultura, el ánimo y los colores que laten en ese baile. En tiempo real, un cuadro generativo se pinta
+      solo en la pantalla, al compás de cada gesto. Al terminar, la experiencia se revela: una pintura digital
+      hecha con inteligencia artificial, una escultura 3D nacida del movimiento y un póster de recuerdo con las
+      estadísticas de la noche.
+    </p>
+
+    <!-- CÓMO FUNCIONA -->
+    <section>
+      <p class="eyebrow">El recorrido</p>
+      <h2 class="h-section">Cómo funciona</h2>
+      <div class="flow">
+
+        <div class="flow-step f1">
+          <span class="num">1</span>
+          <div class="flow-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2"/><path d="M12 6.5v6"/><path d="M12 12.5 8 16"/><path d="M12 12.5l4.5 2.5"/><path d="M12 9l-4 2"/><path d="M8 16l-1.5 5"/><path d="M16.5 15l2 5"/></svg>
+          </div>
+          <h3>Bailas</h3>
+          <p>Te paras frente a la cámara y sueltas el cuerpo.</p>
+        </div>
+
+        <div class="flow-step f2">
+          <span class="num">2</span>
+          <div class="flow-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </div>
+          <h3>Te observa</h3>
+          <p>Lee tu expresión y tu movimiento: el alma del baile.</p>
+        </div>
+
+        <div class="flow-step f3">
+          <span class="num">3</span>
+          <div class="flow-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <h3>Arte en vivo</h3>
+          <p>Trazos y partículas se pintan solos, al ritmo de tu energía.</p>
+        </div>
+
+        <div class="flow-step f4">
+          <span class="num">4</span>
+          <div class="flow-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+          </div>
+          <h3>Revelación</h3>
+          <p>Pintura IA, escultura 3D y póster, nacidos de tu baile.</p>
+        </div>
+
+        <div class="flow-step f5">
+          <span class="num">5</span>
+          <div class="flow-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/><rect x="9" y="9" width="2.2" height="2.2"/><rect x="13" y="13" width="2.2" height="2.2"/></svg>
+          </div>
+          <h3>Batalla de arte</h3>
+          <p>Los invitados votan desde el celular, cara a cara.</p>
+        </div>
+
+        <div class="flow-step f6">
+          <span class="num">6</span>
+          <div class="flow-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><polyline points="8.2 13.9 7 22 12 19 17 22 15.8 13.9"/></svg>
+          </div>
+          <h3>Campeón</h3>
+          <p>Confeti, corona y un lugar en el salón de la fama.</p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section>
+      <p class="eyebrow">La experiencia completa</p>
+      <h2 class="h-section">Lo que enciende la fiesta</h2>
+      <div class="features">
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <div>
+            <h3>Arte en vivo</h3>
+            <p>Trazos, partículas y color que laten con cada paso, en tiempo real.</p>
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 14 10 22 12 14 14 12 22 10 14 2 12 10 10Z"/></svg>
+          </div>
+          <div>
+            <h3>Pintura con IA</h3>
+            <p>Una obra digital única, generada a partir del gesto de tu baile.</p>
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          </div>
+          <div>
+            <h3>Escultura 3D imprimible</h3>
+            <p>Tus trayectorias de movimiento talladas en un objeto exportable.</p>
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+          <div>
+            <h3>Póster de recuerdo</h3>
+            <p>Una tarjeta de galería con tus estadísticas: tiempo, ritmo, saltos y giros.</p>
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="6" y1="18" x2="18" y2="18"/><line x1="11" y1="5" x2="13" y2="5"/></svg>
+          </div>
+          <div>
+            <h3>Votación por QR</h3>
+            <p>Los invitados se suman desde su celular: cámara extra, control o jurado.</p>
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4Z"/><path d="M7 5H4a2 2 0 0 0 0 4h1"/><path d="M17 5h3a2 2 0 0 1 0 4h-1"/></svg>
+          </div>
+          <div>
+            <h3>Salón de la fama</h3>
+            <p>Un historial de campeones que persiste fiesta tras fiesta.</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- PRINCIPLE -->
+    <section class="principle">
+      <p class="eyebrow">El corazón de la idea</p>
+      <p class="principle-quote">El arte no nace de la canción. <span class="accent">Nace de ti.</span></p>
+      <p class="support">
+        La cultura, el ánimo y la paleta de cada obra se leen en tu rostro y en tu cuerpo — la música es apenas
+        el pulso de fondo. Dos personas bailando la misma canción crean dos obras completamente distintas,
+        porque cada quien expresa algo distinto. El protagonista siempre eres tú.
+      </p>
+    </section>
+
+    <!-- CLOSING -->
+    <div class="closing">
+      <p class="cta">Baila. Exprésate. Conviértete en arte.</p>
+      <p class="sub">Enciende la cámara, elige tu canción y deja que la fiesta se convierta en galería.</p>
+    </div>
+
+  </div>
+
+  <footer class="strip"></footer>
+  <div class="footer-tag">DanzArte — donde cada baile es una obra</div>
+
+</div>
+
+</body>
+</html>

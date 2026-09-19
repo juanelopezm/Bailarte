@@ -1,0 +1,8 @@
+node_modules/
+.env
+.claude/
+server/data/
+client/public/mediapipe/
+dist/
+*.log
+.DS_Store
