@@ -28,7 +28,7 @@ import { createGalleryEntry, uploadArtifactBase64, recordArtifactUrl, getGallery
 import { getHostInfo } from './routes/hostInfo.ts';
 import { pusherAuth, relay } from './routes/realtime.ts';
 import { artifactUploadToken, videoUploadToken, uploadNotify } from './routes/blob.ts';
-import { rateLimitAi } from './lib/ratelimit.ts';
+import { rateLimitAi, rateLimitGeneral } from './lib/ratelimit.ts';
 
 const app = express();
 app.use(express.json({ limit: '4mb' }));
@@ -43,11 +43,11 @@ app.post('/api/analyze/quick', rateLimitAi, analyzeQuick);
 app.post('/api/analyze/full', rateLimitAi, analyzeFull);
 app.post('/api/generate-painting', rateLimitAi, generatePainting);
 
-app.get('/api/gallery', getGallery);
-app.post('/api/gallery', createGalleryEntry);
-app.post('/api/gallery/:id/artifact/:name', uploadArtifactBase64);
-app.post('/api/gallery/:id/artifact-url', recordArtifactUrl);
-app.get('/api/halloffame', getHallOfFame);
+app.get('/api/gallery', rateLimitGeneral, getGallery);
+app.post('/api/gallery', rateLimitGeneral, createGalleryEntry);
+app.post('/api/gallery/:id/artifact/:name', rateLimitGeneral, uploadArtifactBase64);
+app.post('/api/gallery/:id/artifact-url', rateLimitGeneral, recordArtifactUrl);
+app.get('/api/halloffame', rateLimitGeneral, getHallOfFame);
 
 app.get('/api/host-info', getHostInfo);
 
