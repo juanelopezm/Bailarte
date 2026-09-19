@@ -19,10 +19,12 @@ import { BeatDetector } from '../audio/beats.ts';
 import { analyzePreviewBpm } from '../audio/preview.ts';
 import { getGenrePreset } from '@shared/palettes.ts';
 import { KeyframeCapture } from '../capture/keyframes.ts';
-import { analyzeQuick, analyzeFull, type AnalysisHints } from '../net/api.ts';
+import { analyzeQuick, analyzeFull, generatePainting, type AnalysisHints } from '../net/api.ts';
 import { applyPalette } from './theme.ts';
+import { computeStats } from '../capture/stats.ts';
+import { RevealFlow, type RevealStage } from './RevealFlow.tsx';
 import type { FrameFeatures } from '../capture/features.ts';
-import type { MotionTape, SongInfo, VisionAnalysis } from '@shared/types.ts';
+import type { DanceStats, MotionTape, SongInfo, VisionAnalysis } from '@shared/types.ts';
 
 function energyWordFrom(e: number): string {
   if (e < 0.25) return 'suave';
@@ -56,7 +58,10 @@ export function StageScreen() {
   const [micHint, setMicHint] = useState('');
   const [bpm, setBpm] = useState(0);
   const [analysis, setAnalysis] = useState<VisionAnalysis | null>(null);
-  const [analyzingFull, setAnalyzingFull] = useState(false);
+  const [revealStage, setRevealStage] = useState<RevealStage | null>(null);
+  const [danceStats, setDanceStats] = useState<DanceStats | null>(null);
+  const [paintingUrl, setPaintingUrl] = useState<string | null>(null);
+  const [usingFallbackPainting, setUsingFallbackPainting] = useState(false);
   const wsConnected = useAppStore((s) => s.wsConnected);
   const setWsConnected = useAppStore((s) => s.setWsConnected);
 
@@ -284,30 +289,64 @@ export function StageScreen() {
     setAnalysis(null);
     setTape(null);
     setReplayUrl(null);
+    setRevealStage(null);
+    setDanceStats(null);
+    setPaintingUrl(null);
+    setUsingFallbackPainting(false);
     dancingRef.current = true;
     setDancing(true);
   }
 
-  function handleStop() {
+  async function handleStop() {
     dancingRef.current = false;
     setDancing(false);
     audioElRef.current?.pause(); // "Terminar" must actually stop the music
     const finished = recorderRef.current?.stop(bpm) ?? null;
     setTape(finished);
+    if (!finished || finished.frames.length === 0) return;
 
-    // Stage B: authoritative full-dance analysis, drives the final theme + reveal palette.
+    const stats = computeStats(finished);
+    setDanceStats(stats);
+    setRevealStage('analyzing');
+
+    // Stage B: authoritative full-dance analysis (drives final theme + reveal palette + the
+    // Gemini prompt). Falls back to a neutral analysis only if the request itself fails
+    // (analyzeVision on the server never throws — it has its own genre-preset fallback ladder).
     const frames = keyframeCaptureRef.current.pickForFullAnalysis(8).map((f) => f.base64);
-    if (frames.length > 0) {
-      setAnalyzingFull(true);
-      analyzeFull(danceIdRef.current, frames, buildHints())
-        .then((result) => {
-          setAnalysis(result);
-          applyPalette(result.colorPalette);
-          painterRef.current?.setPalette(result.colorPalette);
-        })
-        .catch((err) => console.warn('[analyze] full failed', err))
-        .finally(() => setAnalyzingFull(false));
+    let finalAnalysis: VisionAnalysis;
+    try {
+      finalAnalysis = frames.length > 0
+        ? await analyzeFull(danceIdRef.current, frames, buildHints())
+        : { culture: 'universal', danceStyle: 'libre', mood: 'energético', colorPalette: DEFAULT_PALETTE, artStyleReferences: ['abstracto'], perceivedExperience: 'pura energía en movimiento', movementKeywords: ['libre'], fromVision: false };
+    } catch (err) {
+      console.warn('[analyze] full failed, using neutral fallback', err);
+      finalAnalysis = { culture: 'universal', danceStyle: 'libre', mood: 'energético', colorPalette: DEFAULT_PALETTE, artStyleReferences: ['abstracto'], perceivedExperience: 'pura energía en movimiento', movementKeywords: ['libre'], fromVision: false };
     }
+    setAnalysis(finalAnalysis);
+    applyPalette(finalAnalysis.colorPalette);
+    painterRef.current?.setPalette(finalAnalysis.colorPalette);
+
+    // Deterministic hi-res replay — always available, doubles as the Gemini input image.
+    const replay = replayTape(finished, finalAnalysis.colorPalette, 2048, 2560);
+    const replayBlob = await replay.toBlob();
+    const replayObjectUrl = URL.createObjectURL(replayBlob);
+
+    setRevealStage('painting');
+    try {
+      const result = await generatePainting(danceIdRef.current, finalAnalysis, stats, replay.toPngBase64());
+      if (result.fallback || !result.imageBase64) {
+        setPaintingUrl(replayObjectUrl);
+        setUsingFallbackPainting(true);
+      } else {
+        setPaintingUrl(`data:image/png;base64,${result.imageBase64}`);
+        setUsingFallbackPainting(false);
+      }
+    } catch (err) {
+      console.warn('[painting] generation failed, using hi-res replay fallback', err);
+      setPaintingUrl(replayObjectUrl);
+      setUsingFallbackPainting(true);
+    }
+    setRevealStage('done');
   }
 
   async function handleReplay() {
@@ -395,31 +434,6 @@ export function StageScreen() {
         </p>
       )}
 
-      {analyzingFull && (
-        <p style={{ textAlign: 'center', opacity: 0.7, fontSize: 14, margin: '0 0 0.5rem' }}>
-          🔮 analizando tu baile…
-        </p>
-      )}
-
-      {analysis && (
-        <div style={{ textAlign: 'center', margin: '0 0 1rem', padding: '0.75rem 1.5rem', maxWidth: 520, marginLeft: 'auto', marginRight: 'auto', borderRadius: 12, background: 'rgba(255,255,255,0.06)' }}>
-          <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700 }}>
-            {analysis.culture} · {analysis.danceStyle} · {analysis.mood}
-          </p>
-          <p style={{ margin: 0, opacity: 0.75, fontSize: 13, fontStyle: 'italic' }}>
-            "{analysis.perceivedExperience}"
-          </p>
-          <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 8 }}>
-            {analysis.colorPalette.map((hex, i) => (
-              <span key={i} style={{ width: 20, height: 20, borderRadius: '50%', background: hex, border: '1px solid rgba(255,255,255,0.3)' }} />
-            ))}
-          </div>
-          {!analysis.fromVision && (
-            <p style={{ margin: '6px 0 0', opacity: 0.4, fontSize: 11 }}>(paleta de respaldo — sin conexión a Claude)</p>
-          )}
-        </div>
-      )}
-
       <div style={{ position: 'relative', width: '100%', maxWidth: 720, aspectRatio: `${CANVAS_W} / ${CANVAS_H}`, margin: '0 auto', background: '#000', borderRadius: 12, overflow: 'hidden' }}>
         <canvas ref={paintCanvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
         <canvas ref={sparkleCanvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
@@ -434,11 +448,27 @@ export function StageScreen() {
         </div>
       </div>
 
+      {revealStage && (
+        <RevealFlow
+          stage={revealStage}
+          analysis={analysis}
+          stats={danceStats}
+          paintingUrl={paintingUrl}
+          usingFallback={usingFallbackPainting}
+        />
+      )}
+
+      {paintingUrl && revealStage === 'done' && (
+        <div style={{ textAlign: 'center', margin: '0.5rem 0 1.5rem' }}>
+          <a href={paintingUrl} download="obra.png" style={{ color: 'var(--c5)' }}>Descargar obra</a>
+        </div>
+      )}
+
       {replayUrl && (
         <div style={{ textAlign: 'center', margin: '1rem 0' }}>
-          <img src={replayUrl} alt="hi-res replay" style={{ maxWidth: 300, borderRadius: 8, border: '1px solid #444' }} />
+          <img src={replayUrl} alt="hi-res replay (manual dev tool)" style={{ maxWidth: 300, borderRadius: 8, border: '1px solid #444' }} />
           <div>
-            <a href={replayUrl} download="replay.png" style={{ color: 'var(--c5)' }}>Descargar PNG</a>
+            <a href={replayUrl} download="replay.png" style={{ color: 'var(--c5)' }}>Descargar PNG (dev)</a>
           </div>
         </div>
       )}

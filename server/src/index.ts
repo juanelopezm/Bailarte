@@ -7,13 +7,14 @@ import { WebSocketServer } from 'ws';
 import { initHub } from './wsHub.ts';
 import { searchSongs, proxyPreview } from './routes/itunes.ts';
 import { analyzeQuick, analyzeFull } from './routes/analyze.ts';
+import { generatePainting } from './routes/painting.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = path.resolve(__dirname, '..', 'data');
 
 const app = express();
-// 20mb: Stage B uploads 6-8 base64-encoded keyframes (~40-60KB JPEG each, ~33% base64 overhead).
-app.use(express.json({ limit: '20mb' }));
+// 30mb: Stage B keyframes + a 2048x2560 base64 gesture-painting PNG for /api/generate-painting.
+app.use(express.json({ limit: '30mb' }));
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
@@ -23,6 +24,7 @@ app.get('/api/itunes/search', searchSongs);
 app.get('/api/itunes/preview', proxyPreview);
 app.post('/api/analyze/quick', analyzeQuick);
 app.post('/api/analyze/full', analyzeFull);
+app.post('/api/generate-painting', generatePainting);
 
 // Static-served artifacts (posters, paintings, sculpture exports) — see plan §L.
 app.use('/artifacts', express.static(path.join(dataDir, 'artifacts')));
