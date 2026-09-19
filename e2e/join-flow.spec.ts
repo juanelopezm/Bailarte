@@ -4,33 +4,23 @@
 // browser tabs talking through the real hosted transport (Pusher + /api/relay). This drives two
 // real browser contexts against the actual deployment, exactly like a host laptop + a guest phone.
 import { test, expect } from '@playwright/test';
+import { openHost, openPhone } from './helpers.ts';
 
 test('a phone joining via the QR-encoded URL reaches "conectado", not stuck on "conectando"', async ({ browser }) => {
-  const hostContext = await browser.newContext();
-  const hostPage = await hostContext.newPage();
-  await hostPage.goto('/');
+  const { page: hostPage, sessionCode } = await openHost(browser);
 
-  const codeLocator = hostPage.locator('p', { hasText: 'Código:' }).locator('strong');
-  await expect(codeLocator).toBeVisible({ timeout: 15_000 });
-  const sessionCode = (await codeLocator.textContent())?.trim();
-  expect(sessionCode).toMatch(/^[A-Z0-9]{4}$/);
-
-  const phoneContext = await browser.newContext();
-  const phonePage = await phoneContext.newPage();
-  await phonePage.goto(`/#/phone?s=${sessionCode}`);
-
-  // This is the actual regression check: before the fix, this text stayed "conectando…" forever
-  // because RealtimeClient.connect() never opened a Pusher socket without a join first, and
-  // join was only ever sent after a connection succeeded — a permanent deadlock.
-  await expect(phonePage.getByText('conectado', { exact: false })).toBeVisible({ timeout: 15_000 });
+  // This is the actual regression check: before the fix, openPhone's wait for "conectado" would
+  // time out forever, because RealtimeClient.connect() never opened a Pusher socket without a
+  // join first, and join was only ever sent after a connection succeeded — a permanent deadlock.
+  const phonePage = await openPhone(browser, sessionCode);
   await expect(phonePage.getByText('Cámara — segundo ángulo')).toBeVisible();
   await expect(phonePage.getByText('Control remoto')).toBeVisible();
 
   // The host should see the phone's presence too (peer count moves off 0).
   await expect(hostPage.getByText('1 teléfono conectado')).toBeVisible({ timeout: 15_000 });
 
-  await hostContext.close();
-  await phoneContext.close();
+  await hostPage.close();
+  await phonePage.close();
 });
 
 test('the host page renders the core dance UI without crashing', async ({ page }) => {

@@ -8,6 +8,11 @@ import { defineConfig } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
+  // These tests share external, rate-limited resources (the iTunes Search API's own ~20/min
+  // limit, Pusher connections) and drive real browser automation against a live deployment —
+  // parallel workers introduced flakiness from contention, not real bugs. Small suite, so
+  // running serially costs little.
+  workers: 1,
   use: {
     baseURL: process.env.BASE_URL || 'https://bailarte-three.vercel.app',
     ignoreHTTPSErrors: true,
