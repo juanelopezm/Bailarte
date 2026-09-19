@@ -9,8 +9,8 @@
 // It's also a much smaller open model than Claude, so JSON adherence is weaker — this keeps the
 // CLI's exact fence-stripping + validate + one retry + genre-preset fallback ladder rather than
 // trusting the model to always return clean JSON.
-import type { VisionAnalysis } from '../../shared/types.ts';
-import { getGenrePreset } from '../../shared/palettes.ts';
+import type { VisionAnalysis } from '../../../shared/types.ts';
+import { getGenrePreset } from '../../../shared/palettes.ts';
 
 const MODEL = process.env.CLOUDFLARE_VISION_MODEL || '@cf/meta/llama-3.2-11b-vision-instruct';
 

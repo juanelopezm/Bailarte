@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build -w client",
+  "buildCommand": "npm run build -w client && npm run build:api",
   "outputDirectory": "client/dist",
   "installCommand": "npm install",
   "rewrites": [

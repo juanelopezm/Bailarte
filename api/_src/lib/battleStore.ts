@@ -7,7 +7,7 @@ import { nanoid } from 'nanoid';
 import { redis } from './redis.ts';
 import { triggerMsg } from './pusherServer.ts';
 import { setChampion } from './galleryStore.ts';
-import type { BattleEntrant, BattleMatch, BattleState } from '../../shared/types.ts';
+import type { BattleEntrant, BattleMatch, BattleState } from '../../../shared/types.ts';
 
 interface StoredMatch extends BattleMatch {
   votes: Record<string, 'a' | 'b'>;

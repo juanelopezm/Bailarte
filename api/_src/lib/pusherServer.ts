@@ -2,7 +2,7 @@
 // the client side for the matching adapter). One presence channel per session code stands in
 // for the ws hub's room/peer tracking.
 import Pusher from 'pusher';
-import type { WsMsg, WsRole } from '../../shared/types.ts';
+import type { WsMsg, WsRole } from '../../../shared/types.ts';
 
 const pusher = new Pusher({
   appId: process.env.PUSHER_APP_ID!,

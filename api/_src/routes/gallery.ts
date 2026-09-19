@@ -4,7 +4,7 @@ import type { Request, Response } from 'express';
 import {
   createEntry, uploadArtifact, updateEntryFiles, listEntries, listChampions,
 } from '../lib/galleryStore.ts';
-import type { DanceStats, SongInfo, VisionAnalysis } from '../../shared/types.ts';
+import type { DanceStats, SongInfo, VisionAnalysis } from '../../../shared/types.ts';
 
 const ARTIFACT_NAMES = new Set(['painting.png', 'poster.png', 'thumb.jpg', 'sculpture.glb', 'champion.png']);
 

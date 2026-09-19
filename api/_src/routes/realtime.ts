@@ -7,7 +7,7 @@ import type { Request, Response } from 'express';
 import { authorizeChannel, triggerMsg } from '../lib/pusherServer.ts';
 import { getEntry } from '../lib/galleryStore.ts';
 import { startBattle, castVote, lockMatch } from '../lib/battleStore.ts';
-import type { BattleEntrant, WsMsg } from '../../shared/types.ts';
+import type { BattleEntrant, WsMsg } from '../../../shared/types.ts';
 
 export function pusherAuth(req: Request, res: Response) {
   const { socket_id: socketId, channel_name: channel, role } = req.body as {

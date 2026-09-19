@@ -6,7 +6,7 @@
 import { put } from '@vercel/blob';
 import { nanoid } from 'nanoid';
 import { redis } from './redis.ts';
-import type { GalleryEntry } from '../../shared/types.ts';
+import type { GalleryEntry } from '../../../shared/types.ts';
 
 const ENTRIES_KEY = 'gallery:entries';
 
