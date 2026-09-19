@@ -2,6 +2,7 @@
   "name": "dance-to-art",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
   "workspaces": [
     "client",
     "server"

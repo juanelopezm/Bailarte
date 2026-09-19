@@ -18,7 +18,21 @@ import { createPreviewSource, createMicSource, type AudioSource } from '../audio
 import { BeatDetector } from '../audio/beats.ts';
 import { analyzePreviewBpm } from '../audio/preview.ts';
 import { getGenrePreset } from '@shared/palettes.ts';
-import type { MotionTape, SongInfo } from '@shared/types.ts';
+import { KeyframeCapture } from '../capture/keyframes.ts';
+import { analyzeQuick, analyzeFull, type AnalysisHints } from '../net/api.ts';
+import { applyPalette } from './theme.ts';
+import type { FrameFeatures } from '../capture/features.ts';
+import type { MotionTape, SongInfo, VisionAnalysis } from '@shared/types.ts';
+
+function energyWordFrom(e: number): string {
+  if (e < 0.25) return 'suave';
+  if (e < 0.5) return 'fluida';
+  if (e < 0.75) return 'vigorosa';
+  return 'explosiva';
+}
+function smoothnessWordFrom(s: number): string {
+  return s > 0.55 ? 'fluida y continua' : 'angular y entrecortada';
+}
 
 const CANVAS_W = 1280;
 const CANVAS_H = 720;
@@ -40,6 +54,8 @@ export function StageScreen() {
   const [song, setSong] = useState<SongInfo | null>(null);
   const [micMode, setMicMode] = useState(false);
   const [bpm, setBpm] = useState(0);
+  const [analysis, setAnalysis] = useState<VisionAnalysis | null>(null);
+  const [analyzingFull, setAnalyzingFull] = useState(false);
   const wsConnected = useAppStore((s) => s.wsConnected);
   const setWsConnected = useAppStore((s) => s.setWsConnected);
 
@@ -50,6 +66,25 @@ export function StageScreen() {
   const audioSourceRef = useRef<AudioSource | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const beatDetectorRef = useRef<BeatDetector | null>(null);
+  const keyframeCaptureRef = useRef(new KeyframeCapture());
+  const latestFeaturesRef = useRef<FrameFeatures | null>(null);
+  const quickFiredRef = useRef(false);
+  const danceIdRef = useRef('');
+  const songRef = useRef<SongInfo | null>(null);
+  const bpmRef = useRef(0);
+  songRef.current = song;
+  bpmRef.current = bpm;
+
+  function buildHints(): AnalysisHints {
+    return {
+      songTitle: songRef.current?.title,
+      artist: songRef.current?.artist,
+      genre: songRef.current?.genre,
+      bpm: bpmRef.current || undefined,
+      energyWord: energyWordFrom(latestFeaturesRef.current?.kineticEnergy ?? 0),
+      smoothnessWord: smoothnessWordFrom(latestFeaturesRef.current?.smoothness ?? 1),
+    };
+  }
 
   useEffect(() => {
     getHealth().then(() => setApiOk('ok')).catch(() => setApiOk('fail'));
@@ -113,8 +148,30 @@ export function StageScreen() {
               const frame = recorderRef.current.pushPose(result);
               if (frame) {
                 const features = trackerRef.current.update(frame);
+                latestFeaturesRef.current = features;
+                recorderRef.current.pushEnergy(features.kineticEnergy);
                 painterRef.current.onFrame(frame, features);
               }
+            }
+          }
+        }
+
+        // Keyframe capture + Stage A "it's watching you" mid-dance quick analysis (plan §E).
+        if (dancingRef.current && recorderRef.current) {
+          const elapsed = recorderRef.current.elapsedMs();
+          keyframeCaptureRef.current.maybeCapture(video, elapsed, latestFeaturesRef.current?.kineticEnergy ?? 0);
+
+          if (!quickFiredRef.current && elapsed >= 7000) {
+            quickFiredRef.current = true;
+            const kf = keyframeCaptureRef.current.latest();
+            if (kf) {
+              analyzeQuick(danceIdRef.current, kf.base64, buildHints())
+                .then((result) => {
+                  setAnalysis(result);
+                  applyPalette(result.colorPalette);
+                  painterRef.current?.setPalette(result.colorPalette);
+                })
+                .catch((err) => console.warn('[analyze] quick failed', err));
             }
           }
         }
@@ -215,6 +272,10 @@ export function StageScreen() {
     recorderRef.current = recorder;
     trackerRef.current = new FeatureTracker();
     painterRef.current?.reset();
+    keyframeCaptureRef.current.reset();
+    quickFiredRef.current = false;
+    danceIdRef.current = crypto.randomUUID();
+    setAnalysis(null);
     setTape(null);
     setReplayUrl(null);
     dancingRef.current = true;
@@ -227,13 +288,29 @@ export function StageScreen() {
     audioElRef.current?.pause(); // "Terminar" must actually stop the music
     const finished = recorderRef.current?.stop(bpm) ?? null;
     setTape(finished);
+
+    // Stage B: authoritative full-dance analysis, drives the final theme + reveal palette.
+    const frames = keyframeCaptureRef.current.pickForFullAnalysis(8).map((f) => f.base64);
+    if (frames.length > 0) {
+      setAnalyzingFull(true);
+      analyzeFull(danceIdRef.current, frames, buildHints())
+        .then((result) => {
+          setAnalysis(result);
+          applyPalette(result.colorPalette);
+          painterRef.current?.setPalette(result.colorPalette);
+        })
+        .catch((err) => console.warn('[analyze] full failed', err))
+        .finally(() => setAnalyzingFull(false));
+    }
   }
 
   async function handleReplay() {
     if (!tape) return;
     setReplaying(true);
     try {
-      const palette = song ? getGenrePreset(song.genre).colorPalette : DEFAULT_PALETTE;
+      // Vision-analysis palette is authoritative (from the person, per plan's core principle);
+      // genre preset is a pre-analysis fallback only.
+      const palette = analysis?.colorPalette ?? (song ? getGenrePreset(song.genre).colorPalette : DEFAULT_PALETTE);
       const result = replayTape(tape, palette, 2048, 2560);
       const blob = await result.toBlob();
       setReplayUrl(URL.createObjectURL(blob));
@@ -294,6 +371,37 @@ export function StageScreen() {
         <p style={{ textAlign: 'center', opacity: 0.6, fontSize: 13, margin: '0 0 0.5rem' }}>
           {tape.frames.length} frames · {(tape.durationMs / 1000).toFixed(1)}s · {tape.beats.length} beats · {tape.bpm} BPM
         </p>
+      )}
+
+      {dancing && !analysis && (
+        <p style={{ textAlign: 'center', opacity: 0.5, fontSize: 13, margin: '0 0 0.5rem' }}>
+          👁️ observando tu movimiento…
+        </p>
+      )}
+
+      {analyzingFull && (
+        <p style={{ textAlign: 'center', opacity: 0.7, fontSize: 14, margin: '0 0 0.5rem' }}>
+          🔮 analizando tu baile…
+        </p>
+      )}
+
+      {analysis && (
+        <div style={{ textAlign: 'center', margin: '0 0 1rem', padding: '0.75rem 1.5rem', maxWidth: 520, marginLeft: 'auto', marginRight: 'auto', borderRadius: 12, background: 'rgba(255,255,255,0.06)' }}>
+          <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700 }}>
+            {analysis.culture} · {analysis.danceStyle} · {analysis.mood}
+          </p>
+          <p style={{ margin: 0, opacity: 0.75, fontSize: 13, fontStyle: 'italic' }}>
+            "{analysis.perceivedExperience}"
+          </p>
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 8 }}>
+            {analysis.colorPalette.map((hex, i) => (
+              <span key={i} style={{ width: 20, height: 20, borderRadius: '50%', background: hex, border: '1px solid rgba(255,255,255,0.3)' }} />
+            ))}
+          </div>
+          {!analysis.fromVision && (
+            <p style={{ margin: '6px 0 0', opacity: 0.4, fontSize: 11 }}>(paleta de respaldo — sin conexión a Claude)</p>
+          )}
+        </div>
       )}
 
       <div style={{ position: 'relative', width: '100%', maxWidth: 720, aspectRatio: `${CANVAS_W} / ${CANVAS_H}`, margin: '0 auto', background: '#000', borderRadius: 12, overflow: 'hidden' }}>

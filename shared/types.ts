@@ -90,12 +90,26 @@ export interface GalleryEntry {
 export type WsRole = 'host' | 'phone' | 'voter';
 export type PhoneCapability = 'camera' | 'remote' | 'upload' | 'vote';
 
+// Structural equivalents of the DOM lib's RTCSessionDescriptionInit/RTCIceCandidateInit —
+// this file is shared with the server, which has no DOM lib. The server only relays these
+// verbatim (plan §K) and never inspects their fields, so a structural shape is sufficient.
+export interface RtcSdpLike {
+  type: 'offer' | 'answer' | 'pranswer' | 'rollback';
+  sdp?: string;
+}
+export interface RtcIceCandidateLike {
+  candidate?: string;
+  sdpMid?: string | null;
+  sdpMLineIndex?: number | null;
+  usernameFragment?: string | null;
+}
+
 export type WsMsg =
   | { type: 'join'; session: string; role: WsRole }
   | { type: 'joined'; session: string; role: WsRole; peers: number }
   | { type: 'peer-joined'; role: WsRole }
   | { type: 'peer-left'; role: WsRole }
-  | { type: 'rtc'; sdp?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit }
+  | { type: 'rtc'; sdp?: RtcSdpLike; candidate?: RtcIceCandidateLike }
   | { type: 'control'; action: 'start' | 'stop' | 'surprise' | 'pick'; payload?: unknown }
   | { type: 'vote'; matchId: string; pick: 'a' | 'b'; deviceToken: string }
   | { type: 'tally'; matchId: string; a: number; b: number; voters: number }

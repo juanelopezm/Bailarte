@@ -40,6 +40,12 @@ function findHost(room: Room): Peer | undefined {
   return undefined;
 }
 
+/** Lets HTTP routes (e.g. the vision-analysis endpoint) push a message into a session's room. */
+export function broadcastToSession(session: string, msg: WsMsg) {
+  const room = rooms.get(session);
+  if (room) broadcast(room, msg);
+}
+
 export function initHub(wss: WebSocketServer) {
   wss.on('connection', (ws) => {
     let currentRoom: Room | null = null;
