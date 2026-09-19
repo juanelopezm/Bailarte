@@ -396,7 +396,7 @@ export function StageScreen() {
     setRevealStage('analyzing');
 
     // Stage B: authoritative full-dance analysis (drives final theme + reveal palette + the
-    // Gemini prompt). Falls back to a neutral analysis only if the request itself fails
+    // painting prompt). Falls back to a neutral analysis only if the request itself fails
     // (analyzeVision on the server never throws — it has its own genre-preset fallback ladder).
     const neutralFallback: VisionAnalysis = { culture: 'universal', danceStyle: 'libre', mood: 'energético', colorPalette: DEFAULT_PALETTE, artStyleReferences: ['abstracto'], perceivedExperience: 'pura energía en movimiento', movementKeywords: ['libre'], fromVision: false };
     const frames = keyframeSource.pickForFullAnalysis(8).map((f) => f.base64);

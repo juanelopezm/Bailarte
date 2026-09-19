@@ -1,7 +1,7 @@
 // Deterministic hi-res re-render of a full MotionTape (plan §G). Runs the exact same
 // feature-extraction + painting pipeline synchronously (no real-time waiting), seeded from
 // the tape's stored seed, so the output is pixel-reproducible. Used as (a) the guaranteed
-// "digital painting" fallback and (b) the image input to Gemini (plan §H).
+// "digital painting" fallback and (b) the guaranteed painting when the image API is unset.
 import type { MotionTape } from '@shared/types.ts';
 import { FeatureTracker } from '../capture/features.ts';
 import { LivePainter } from './livePainter.ts';

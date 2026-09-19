@@ -24,20 +24,27 @@ function movementStyleFromStats(stats: DanceStats): string {
 }
 
 function buildPrompt(analysis: VisionAnalysis, stats: DanceStats): string {
-  const durationSec = Math.round(stats.durationMs / 1000);
-  const wristTravel = stats.wristTravelMeters.toFixed(1);
-  const syncPct = Math.round(stats.grooveSyncPct * 100);
   const style = movementStyleFromStats(stats);
+  // First clause only — analysis.mood can be a full descriptive sentence, and a long Spanish
+  // fragment dilutes the English "no people" instruction's weight in a short prompt.
+  const moodShort = analysis.mood.split(/[,;.]/)[0].trim();
 
+  // flux-1-schnell has no negative_prompt parameter (verified against current docs) — a small
+  // distilled model like this pattern-matches on subject nouns regardless of "no X" phrasing,
+  // so the only reliable fix is to never name a figurative subject at all. This deliberately
+  // excludes analysis.perceivedExperience and analysis.movementKeywords from the image prompt:
+  // Claude's vision analysis often describes literal body language ("el cuerpo sostenía...",
+  // "las manos vibrando...") since that's what it's asked to observe, and any body-part or
+  // human-figure noun reliably produced a literal dancer in testing, even prefixed by "no
+  // people". Only pure-abstract vocabulary (art style, mood adjective, hex colors) reaches
+  // the prompt; the richer analysis fields still drive the UI text and the sculpture/replay.
   return [
-    `Pintura digital abstracta, ${style}, que interpreta un baile en vivo — sin ninguna referencia visual previa, compón la obra completa a partir de esta descripción.`,
-    `Estado de ánimo: ${analysis.mood}. Se sintió como: "${analysis.perceivedExperience}".`,
-    `Movimiento: ${durationSec} segundos de baile, ${stats.jumps} saltos, ${stats.spins} giros,`,
-    `${wristTravel} metros recorridos por las muñecas, ${syncPct}% sincronizado con el ritmo a ${stats.bpm || '—'} BPM.`,
-    `Enfatiza estas cualidades de movimiento observadas: ${analysis.movementKeywords.join(', ')}.`,
-    `Usa EXACTAMENTE esta paleta de colores: ${analysis.colorPalette.join(', ')}.`,
-    'Composición dinámica y equilibrada, con profundidad y capas de color.',
-    'Puramente abstracta: sin personas, sin caras, sin texto, sin marca de agua, sin motivos culturales o folclóricos literales. Calidad de museo.',
+    'Non-figurative abstract art, no people, no human figures, no faces, no bodies, no silhouettes anywhere in the image.',
+    `An abstract painting: ${style}.`,
+    `Emotional tone: ${moodShort}.`,
+    `Use EXACTLY this color palette: ${analysis.colorPalette.join(', ')}.`,
+    'Pure color field and gestural mark-making only, like Kandinsky or Pollock. Dynamic balanced composition with depth and layered color.',
+    'No text, no watermark, no logos, no literal objects, no recognizable subjects. Gallery quality abstract art.',
   ].join(' ');
 }
 

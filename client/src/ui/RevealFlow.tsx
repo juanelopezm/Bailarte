@@ -51,7 +51,7 @@ export function RevealFlow({ stage, analysis, stats, paintingUrl, usingFallback 
 
       {usingFallback && stage === 'done' && (
         <p style={{ color: 'var(--ink-faint)', fontSize: 12, marginTop: 8 }}>
-          (pintura de respaldo — Gemini no disponible en este momento)
+          (pintura de respaldo — la IA de imágenes no está disponible en este momento)
         </p>
       )}
 
