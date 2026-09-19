@@ -23,6 +23,7 @@ export function replayTape(
   const sparkleCanvas = document.createElement('canvas'); // unused output, but LivePainter needs it
   const painter = new LivePainter(paintCanvas, sparkleCanvas, width, height, tape.seed);
   painter.setPaletteImmediate(palette);
+  painter.paintWash();
 
   const tracker = new FeatureTracker();
   let beatIdx = 0;

@@ -289,6 +289,7 @@ export function StageScreen() {
     recorderRef.current = recorder;
     trackerRef.current = new FeatureTracker();
     painterRef.current?.reset();
+    painterRef.current?.paintWash();
     keyframeCaptureRef.current.reset();
     quickFiredRef.current = false;
     danceIdRef.current = crypto.randomUUID();

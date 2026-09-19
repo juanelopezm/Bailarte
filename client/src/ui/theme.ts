@@ -10,6 +10,13 @@ export function applyPalette(hexes: string[]) {
     root.setProperty(`--c${i + 1}`, hexes[i % hexes.length]);
   }
   const bg = deriveBackground(hexes);
+  const ink = contrastTextColor(bg);
   root.setProperty('--bg', bg);
-  root.setProperty('--ink', contrastTextColor(bg));
+  root.setProperty('--ink', ink);
+  // --ink-dim/--ink-faint are hardcoded light in index.css for the default dark theme — once
+  // the adaptive background can go light, they must be derived from the SAME ink color or
+  // secondary text silently becomes illegible (light gray on a light background).
+  const rgb = ink === '#ffffff' ? '255,255,255' : '0,0,0';
+  root.setProperty('--ink-dim', `rgba(${rgb},0.65)`);
+  root.setProperty('--ink-faint', `rgba(${rgb},0.4)`);
 }

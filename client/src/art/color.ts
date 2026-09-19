@@ -13,3 +13,8 @@ export function lerpHex(a: string, b: string, t: number): string {
   const [br, bg, bb] = hexToRgb(b);
   return rgbToHex(ar + (br - ar) * t, ag + (bg - ag) * t, ab + (bb - ab) * t);
 }
+
+export function hexToRgba(hex: string, alpha: number): string {
+  const [r, g, b] = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${alpha})`;
+}

@@ -88,9 +88,10 @@ export function initHub(wss: WebSocketServer) {
           break;
         }
 
-        case 'control': {
+        case 'control':
+        case 'upload-ready': {
           if (!currentRoom) return;
-          // Remote phone -> host only.
+          // Remote/upload-notify: phone -> host only.
           const host = findHost(currentRoom);
           if (host) send(host.ws, msg);
           break;

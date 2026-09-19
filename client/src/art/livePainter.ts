@@ -7,7 +7,7 @@ import type { FrameFeatures } from '../capture/features.ts';
 import { mulberry32, type Rng } from './rng.ts';
 import { flowAngle } from './flowField.ts';
 import { strokeSegment, splatter, drawParticle } from './brushes.ts';
-import { lerpHex } from './color.ts';
+import { lerpHex, hexToRgba } from './color.ts';
 
 const PAINT_JOINTS = [LM.L_WRIST, LM.R_WRIST, LM.L_ANKLE, LM.R_ANKLE] as const;
 
@@ -63,6 +63,50 @@ export class LivePainter {
     this.paintCtx.restore();
   }
 
+  /**
+   * Paints a few large, soft, seeded color blobs across the canvas before any strokes are
+   * drawn — atmospheric depth so the final piece isn't gestural lines on a flat void. Uses
+   * whatever palette is current at call time, so call this AFTER setPalette/setPaletteImmediate.
+   * Deterministic (seeded RNG), so it reproduces identically live and in hiResReplay.
+   */
+  paintWash() {
+    this.paintCtx.save();
+    this.paintCtx.globalCompositeOperation = 'lighter';
+    const blobCount = 5;
+    for (let i = 0; i < blobCount; i++) {
+      const x = this.rng() * this.width;
+      const y = this.rng() * this.height;
+      const r = (0.3 + this.rng() * 0.35) * Math.max(this.width, this.height);
+      const color = this.paletteAt(Math.floor(this.rng() * this.currentPalette.length));
+      const grad = this.paintCtx.createRadialGradient(x, y, 0, x, y, r);
+      grad.addColorStop(0, hexToRgba(color, 0.16));
+      grad.addColorStop(1, hexToRgba(color, 0));
+      this.paintCtx.fillStyle = grad;
+      this.paintCtx.beginPath();
+      this.paintCtx.arc(x, y, r, 0, Math.PI * 2);
+      this.paintCtx.fill();
+    }
+    this.paintCtx.restore();
+  }
+
+  /** Thin expanding rings at the last known joint positions — a lasting compositional accent
+   * baked into the permanent paint layer, so beats leave a visible mark on the finished piece
+   * (not just the ephemeral live sparkle). */
+  private drawBeatBurst() {
+    if (this.prevScreenPos.size === 0) return;
+    const color = this.paletteAt(this.beatShift);
+    this.paintCtx.save();
+    this.paintCtx.strokeStyle = color;
+    this.paintCtx.globalAlpha = 0.3;
+    this.paintCtx.lineWidth = 2;
+    for (const [x, y] of this.prevScreenPos.values()) {
+      this.paintCtx.beginPath();
+      this.paintCtx.arc(x, y, 16 + this.rng() * 12, 0, Math.PI * 2);
+      this.paintCtx.stroke();
+    }
+    this.paintCtx.restore();
+  }
+
   resize(width: number, height: number) {
     this.width = width;
     this.height = height;
@@ -95,6 +139,7 @@ export class LivePainter {
   pulseBeat(atMs: number) {
     this.beatBoostUntil = atMs + 120;
     this.beatShift++;
+    this.drawBeatBurst();
   }
 
   private toScreen(frame: MotionFrame, joint: number): [number, number] {

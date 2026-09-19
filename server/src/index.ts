@@ -9,13 +9,15 @@ import { searchSongs, proxyPreview } from './routes/itunes.ts';
 import { analyzeQuick, analyzeFull } from './routes/analyze.ts';
 import { generatePainting } from './routes/painting.ts';
 import { createGalleryEntry, uploadArtifact, getGallery, getHallOfFame } from './routes/gallery.ts';
+import { getHostInfo } from './routes/hostInfo.ts';
+import { uploadVideo } from './routes/upload.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = path.resolve(__dirname, '..', 'data');
 
 const app = express();
-// 30mb: Stage B keyframes + a 2048x2560 base64 gesture-painting PNG for /api/generate-painting.
-app.use(express.json({ limit: '30mb' }));
+// 200mb: phone video uploads (plan §K, base64 overhead included) are the largest payload here.
+app.use(express.json({ limit: '200mb' }));
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
