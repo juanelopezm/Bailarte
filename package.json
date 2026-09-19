@@ -11,10 +11,15 @@
   "scripts": {
     "dev": "concurrently -n server,client -c blue,green \"npm:dev -w server\" \"npm:dev -w client\"",
     "fetch-models": "node scripts/fetch-models.mjs",
-    "build:api": "esbuild api/_src/index.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=api/index.js"
+    "build:api": "esbuild api/_src/index.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=api/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "concurrently": "10.0.5",
-    "esbuild": "0.28.2"
+    "esbuild": "0.28.2",
+    "vitest": "^5.0.1"
   }
 }

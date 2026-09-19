@@ -9,3 +9,5 @@ dist/
 .vercel
 .env*
 api/index.js
+playwright-report/
+test-results/
