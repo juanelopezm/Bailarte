@@ -27,9 +27,27 @@ function applyUnfurl(points: THREE.Vector3[], times: number[], mode: UnfurlMode,
   });
 }
 
+// A trail per joint, built independently from that joint's own raw world-space path, reads as
+// unrelated floating debris rather than one sculpture — nothing ever visually ties the wrist
+// trail to the ankle trail to the nose trail. Every trail gets a short connector back to a
+// shared core at the origin (hip-center) so the piece reads as one form radiating outward,
+// like a single figure, instead of five disconnected ribbons. The unfurl transforms (stream/
+// spiral) are identity at t=0, so anchoring to each trail's very first point keeps this hub
+// intact in every mode.
+const CORE_RADIUS = 0.045;
+
+function averageColor(colors: THREE.Color[]): THREE.Color {
+  const sum = colors.reduce((acc, c) => acc.add(c.clone()), new THREE.Color(0, 0, 0));
+  return sum.multiplyScalar(1 / colors.length);
+}
+
 export function buildSculpture(tape: MotionTape, palette: string[], mode: UnfurlMode = 'orbit'): THREE.Group {
   const group = new THREE.Group();
   const colors = palette.map((hex) => new THREE.Color(hex));
+  const coreColor = averageColor(colors);
+  const coreMaterial = new THREE.MeshPhysicalMaterial({ color: coreColor, metalness: 0.3, roughness: 0.25, clearcoat: 0.8 });
+  const core = new THREE.Mesh(new THREE.SphereGeometry(CORE_RADIUS, 24, 24), coreMaterial);
+  group.add(core);
 
   TRAIL_JOINTS.forEach((joint, jointIdx) => {
     const raw = tape.frames.map((f) => ({
@@ -80,6 +98,15 @@ export function buildSculpture(tape: MotionTape, palette: string[], mode: Unfurl
     const geometry = buildVariableTube({ points: transformed, radii, colors: trailColors });
     const material = new THREE.MeshPhysicalMaterial({ vertexColors: true, metalness: 0.2, roughness: 0.35, clearcoat: 0.5 });
     group.add(new THREE.Mesh(geometry, material));
+
+    // Connector spoke from the shared core to this trail's start — see the comment above
+    // buildSculpture for why this is what turns 5 unrelated ribbons into one sculpture.
+    const connectorGeometry = buildVariableTube({
+      points: [new THREE.Vector3(0, 0, 0), transformed[0]],
+      radii: [CORE_RADIUS * 0.55, radii[0]],
+      colors: [coreColor, baseColor],
+    });
+    group.add(new THREE.Mesh(connectorGeometry, material));
 
     // Endcap spheres — open tubes are non-manifold, which breaks STL slicers (plan §I).
     const startCap = new THREE.Mesh(new THREE.SphereGeometry(radii[0], 12, 12), material);

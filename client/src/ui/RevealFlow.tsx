@@ -63,6 +63,9 @@ export function RevealFlow({ stage, analysis, stats, paintingUrl, usingFallback 
           <p style={{ color: 'var(--ink-dim)', fontStyle: 'italic', fontSize: 15, margin: 0 }}>
             "{analysis.perceivedExperience}"
           </p>
+          <p style={{ color: 'var(--ink-faint)', fontSize: 11, margin: '8px 0 0' }}>
+            Interpretación artística generada por IA a partir del movimiento — no es una evaluación real de identidad, cultura o persona.
+          </p>
         </div>
       )}
 

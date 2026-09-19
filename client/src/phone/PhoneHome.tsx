@@ -38,8 +38,11 @@ export function PhoneHome() {
   return (
     <main style={{ padding: '2rem 1.25rem', minHeight: '100vh', textAlign: 'center' }}>
       <h1 style={{ fontSize: 26, margin: '0 0 4px' }}>Danza</h1>
-      <p style={{ color: 'var(--ink-faint)', fontSize: 13, margin: '0 0 1.5rem' }}>
+      <p style={{ color: 'var(--ink-faint)', fontSize: 13, margin: '0 0 4px' }}>
         Sesión {sessionCode} · {connected ? '✅ conectado' : '⏳ conectando…'}
+      </p>
+      <p style={{ color: 'var(--ink-faint)', fontSize: 11, margin: '0 0 1.5rem', maxWidth: 320, marginLeft: 'auto', marginRight: 'auto' }}>
+        Subir un video lo envía a un servicio de IA de terceros para generar arte. La cámara se transmite directo a la pantalla principal, sin pasar por el servidor.
       </p>
 
       {!role && connected && (

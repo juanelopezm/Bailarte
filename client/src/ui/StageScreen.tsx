@@ -522,6 +522,9 @@ export function StageScreen() {
           Danza
         </h1>
         <p style={{ margin: '4px 0 0', color: 'var(--ink-dim)', fontSize: 14 }}>Baila. Exprésate. Conviértete en arte.</p>
+        <p style={{ margin: '10px auto 0', maxWidth: 480, color: 'var(--ink-faint)', fontSize: 11, lineHeight: 1.5 }}>
+          Al usar la cámara, aceptas que tus fotogramas se envían a un servicio de IA de terceros para generar el análisis y la obra. No se guarda video ni fotos salvo que decidas guardar tu obra en la galería de la fiesta.
+        </p>
       </header>
 
       {!dancing && (
@@ -709,6 +712,10 @@ export function StageScreen() {
           </p>
         </div>
       </details>
+
+      <p style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 10, margin: '2rem auto 0', maxWidth: 420, lineHeight: 1.5 }}>
+        Danza es un proyecto de fiesta experimental, provisto tal cual y sin garantías. El arte y los análisis son generados por IA con fines de entretenimiento.
+      </p>
 
       <style>{`
         @keyframes pulse-fade {

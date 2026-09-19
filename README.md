@@ -97,6 +97,14 @@ Bailarte/
 - **Art battle / voting and the persistent hall of fame** (head-to-head voting between dancers' artworks, judged live by party guests) are designed but not yet built.
 - Tested primarily in Chrome; `requestVideoFrameCallback` (used for uploaded-video processing) isn't supported in Firefox.
 
+## Disclaimer
+
+This is an experimental party project, provided as-is with no warranty of any kind. A few things worth knowing:
+
+- **Camera and microphone data**: video frames from the dancer's camera are sent to a third-party AI service (Cloudflare Workers AI) to generate the analysis and artwork. Uploaded videos go through the same pipeline. A phone joining as a second camera streams peer-to-peer directly to the host's screen and never touches the server. Frames/videos are not stored beyond what's needed to generate the art, unless you explicitly save a dance to the gallery.
+- **The "culture," "dance style," and "mood" readings are AI-generated interpretive art, not factual or professional assessments** of any person's identity, culture, or background. They can be wrong, generic (see "Known limitations" above), or occasionally off-base — treat them as part of the art, not a claim about anyone.
+- The app depends on several third-party services (Cloudflare, Pusher, Upstash, Vercel Blob, the iTunes Search API) that can change, rate-limit, or go down without notice.
+
 ## Attribution
 
 Culture, mood, and artistic interpretation: **Claude** (via the `claude` CLI, using your own Claude Code session).
