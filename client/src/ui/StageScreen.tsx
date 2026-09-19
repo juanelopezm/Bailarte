@@ -53,6 +53,7 @@ export function StageScreen() {
   const [replaying, setReplaying] = useState(false);
   const [song, setSong] = useState<SongInfo | null>(null);
   const [micMode, setMicMode] = useState(false);
+  const [micHint, setMicHint] = useState('');
   const [bpm, setBpm] = useState(0);
   const [analysis, setAnalysis] = useState<VisionAnalysis | null>(null);
   const [analyzingFull, setAnalyzingFull] = useState(false);
@@ -72,12 +73,16 @@ export function StageScreen() {
   const danceIdRef = useRef('');
   const songRef = useRef<SongInfo | null>(null);
   const bpmRef = useRef(0);
+  const micHintRef = useRef('');
   songRef.current = song;
   bpmRef.current = bpm;
+  micHintRef.current = micHint;
 
   function buildHints(): AnalysisHints {
     return {
-      songTitle: songRef.current?.title,
+      // In mic mode there's no song metadata — the free-text "what's playing" field (if the
+      // user bothered to fill it in) is the only substitute, still just a minor hint.
+      songTitle: songRef.current?.title ?? (micHintRef.current || undefined),
       artist: songRef.current?.artist,
       genre: songRef.current?.genre,
       bpm: bpmRef.current || undefined,
@@ -263,6 +268,7 @@ export function StageScreen() {
     stopAudio();
     setSong(null);
     setMicMode(false);
+    setMicHint('');
     setBpm(0);
   }
 
@@ -341,10 +347,20 @@ export function StageScreen() {
               {!dancing && <button onClick={handleChangeSong} style={{ marginLeft: 8 }}>cambiar</button>}
             </p>
           ) : (
-            <p style={{ margin: 0 }}>
-              🎤 Modo micrófono {bpm > 0 && `· ${bpm} BPM`}{' '}
-              {!dancing && <button onClick={handleChangeSong} style={{ marginLeft: 8 }}>cambiar</button>}
-            </p>
+            <>
+              <p style={{ margin: 0 }}>
+                🎤 Modo micrófono {bpm > 0 && `· ${bpm} BPM`}{' '}
+                {!dancing && <button onClick={handleChangeSong} style={{ marginLeft: 8 }}>cambiar</button>}
+              </p>
+              {!dancing && (
+                <input
+                  value={micHint}
+                  onChange={(e) => setMicHint(e.target.value)}
+                  placeholder="¿Qué canción está sonando? (opcional)"
+                  style={{ marginTop: 6, padding: '0.4rem 0.75rem', borderRadius: 999, border: '1px solid #444', background: '#1a1a1a', color: '#eee', fontSize: 13, width: 280 }}
+                />
+              )}
+            </>
           )}
         </div>
       )}
