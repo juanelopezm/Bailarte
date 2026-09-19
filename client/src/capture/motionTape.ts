@@ -26,6 +26,11 @@ export class MotionTapeRecorder {
     return this.startedAt !== null;
   }
 
+  /** Milliseconds elapsed since start(), or 0 if not currently recording. */
+  elapsedMs(): number {
+    return this.startedAt !== null ? performance.now() - this.startedAt : 0;
+  }
+
   /**
    * Call once per pose detection with the raw MediaPipe result. Returns the constructed
    * MotionFrame (or null if not recording / no pose found) so the caller can feed the same

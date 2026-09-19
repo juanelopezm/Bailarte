@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { initHub } from './wsHub.ts';
+import { searchSongs, proxyPreview } from './routes/itunes.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = path.resolve(__dirname, '..', 'data');
@@ -15,6 +16,9 @@ app.use(express.json({ limit: '2mb' }));
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
 });
+
+app.get('/api/itunes/search', searchSongs);
+app.get('/api/itunes/preview', proxyPreview);
 
 // Static-served artifacts (posters, paintings, sculpture exports) — see plan §L.
 app.use('/artifacts', express.static(path.join(dataDir, 'artifacts')));

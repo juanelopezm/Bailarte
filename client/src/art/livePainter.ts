@@ -34,6 +34,8 @@ export class LivePainter {
   private particles: Particle[] = [];
   private beatBoostUntil = 0;
   private beatShift = 0;
+  /** Diagnostic counter — strokes actually drawn since construction/reset. */
+  strokesDrawn = 0;
 
   constructor(paintCanvas: HTMLCanvasElement, sparkleCanvas: HTMLCanvasElement, width: number, height: number, seed: number) {
     this.paintCtx = paintCanvas.getContext('2d')!;
@@ -46,6 +48,19 @@ export class LivePainter {
     sparkleCanvas.width = width;
     sparkleCanvas.height = height;
     this.paintCtx.globalCompositeOperation = 'lighter';
+  }
+
+  /**
+   * Fills the paint canvas with a solid background color. Exported PNGs (hiResReplay) need
+   * this — the canvas is otherwise fully transparent wherever nothing was painted, which
+   * looks "empty"/white in an image viewer instead of the dark stage background it has live.
+   */
+  fillBackground(hex: string) {
+    this.paintCtx.save();
+    this.paintCtx.globalCompositeOperation = 'destination-over';
+    this.paintCtx.fillStyle = hex;
+    this.paintCtx.fillRect(0, 0, this.width, this.height);
+    this.paintCtx.restore();
   }
 
   resize(width: number, height: number) {
@@ -120,6 +135,7 @@ export class LivePainter {
         width, color, alpha, jitter, rng: this.rng,
         shadowBlur: 4 + features.kineticEnergy * 22,
       });
+      this.strokesDrawn++;
 
       if (features.symmetry > 0.7) {
         strokeSegment(
@@ -167,9 +183,11 @@ export class LivePainter {
 
     const dt = dtMs / 1000;
     this.sparkleCtx.save();
-    this.sparkleCtx.globalCompositeOperation = 'source-over';
-    this.sparkleCtx.fillStyle = 'rgba(0,0,0,0.12)';
-    this.sparkleCtx.fillRect(0, 0, this.width, this.height);
+    // Clear fully each frame rather than fading with a translucent black fillRect: on a
+    // transparent canvas, repeated alpha-compositing of black asymptotically accumulates to
+    // FULLY OPAQUE black within ~1-2s, permanently hiding the paint layer underneath. Each
+    // particle already fades its own alpha via `life`, so a plain clear is correct and simpler.
+    this.sparkleCtx.clearRect(0, 0, this.width, this.height);
     this.sparkleCtx.globalCompositeOperation = 'lighter';
 
     for (let i = this.particles.length - 1; i >= 0; i--) {
@@ -196,5 +214,6 @@ export class LivePainter {
     this.prevScreenPos.clear();
     this.particles = [];
     this.beatShift = 0;
+    this.strokesDrawn = 0;
   }
 }

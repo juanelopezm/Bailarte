@@ -5,6 +5,7 @@
 import type { MotionTape } from '@shared/types.ts';
 import { FeatureTracker } from '../capture/features.ts';
 import { LivePainter } from './livePainter.ts';
+import { deriveBackground } from '@shared/palettes.ts';
 
 export interface ReplayResult {
   canvas: HTMLCanvasElement;
@@ -34,6 +35,16 @@ export function replayTape(
     const features = tracker.update(frame);
     painter.onFrame(frame, features);
   }
+
+  // The canvas is transparent everywhere nothing was painted — fill a dark background behind
+  // the strokes so the exported PNG isn't mistaken for empty in an image viewer.
+  painter.fillBackground(deriveBackground(palette));
+
+  console.log(
+    `[replay] ${tape.frames.length} frames, ${tape.beats.length} beats, ` +
+    `${painter.strokesDrawn} strokes drawn — if strokesDrawn is 0, the dance had no movement ` +
+    `fast enough to paint (needs > ~0.05 m/s joint speed).`,
+  );
 
   return {
     canvas: paintCanvas,

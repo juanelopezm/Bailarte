@@ -1,7 +1,7 @@
 // The laptop/big-screen flow: setup -> dance -> reveal -> battle host.
-// Phase 2: live generative painting (DELIGHT #1) driven by the MotionTape + feature pipeline.
-// The paint/sparkle canvases are the main view; the camera becomes a small PiP with the
-// skeleton overlay so the dancer can see their own tracking.
+// Phase 3 adds: song selection (typed search / Surprise Me / mic), rhythm reactivity (beat
+// pulses into the painter), and genre pre-tint on song pick. Song stays a BACKDROP signal only
+// — see plan's core principle: culture/mood/color come from the PERSON, never the song.
 import { useEffect, useRef, useState } from 'react';
 import { getHealth } from '../net/api.ts';
 import { WsClient } from '../net/ws.ts';
@@ -13,7 +13,12 @@ import { MotionTapeRecorder } from '../capture/motionTape.ts';
 import { FeatureTracker } from '../capture/features.ts';
 import { LivePainter } from '../art/livePainter.ts';
 import { replayTape } from '../art/hiResReplay.ts';
-import type { MotionTape } from '@shared/types.ts';
+import { SongPicker } from './SongPicker.tsx';
+import { createPreviewSource, createMicSource, type AudioSource } from '../audio/engine.ts';
+import { BeatDetector } from '../audio/beats.ts';
+import { analyzePreviewBpm } from '../audio/preview.ts';
+import { getGenrePreset } from '@shared/palettes.ts';
+import type { MotionTape, SongInfo } from '@shared/types.ts';
 
 const CANVAS_W = 1280;
 const CANVAS_H = 720;
@@ -32,6 +37,9 @@ export function StageScreen() {
   const [tape, setTape] = useState<MotionTape | null>(null);
   const [replayUrl, setReplayUrl] = useState<string | null>(null);
   const [replaying, setReplaying] = useState(false);
+  const [song, setSong] = useState<SongInfo | null>(null);
+  const [micMode, setMicMode] = useState(false);
+  const [bpm, setBpm] = useState(0);
   const wsConnected = useAppStore((s) => s.wsConnected);
   const setWsConnected = useAppStore((s) => s.setWsConnected);
 
@@ -39,6 +47,9 @@ export function StageScreen() {
   const trackerRef = useRef<FeatureTracker>(new FeatureTracker());
   const painterRef = useRef<LivePainter | null>(null);
   const dancingRef = useRef(false);
+  const audioSourceRef = useRef<AudioSource | null>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const beatDetectorRef = useRef<BeatDetector | null>(null);
 
   useEffect(() => {
     getHealth().then(() => setApiOk('ok')).catch(() => setApiOk('fail'));
@@ -108,6 +119,19 @@ export function StageScreen() {
           }
         }
 
+        // Beat pulses are rhythm backdrop only (never drive culture/mood) — see plan principle.
+        if (beatDetectorRef.current) {
+          const isBeat = beatDetectorRef.current.tick(nowMs);
+          if (isBeat) {
+            const liveBpm = beatDetectorRef.current.estimateBpm();
+            if (liveBpm > 0) setBpm((prev) => prev || liveBpm);
+            if (dancingRef.current && recorderRef.current && painterRef.current) {
+              painterRef.current.pulseBeat(recorderRef.current.elapsedMs());
+              recorderRef.current.pushBeat();
+            }
+          }
+        }
+
         painterRef.current?.tick(nowMs, dtMs);
 
         frameCount++;
@@ -128,8 +152,62 @@ export function StageScreen() {
       cancelled = true;
       cancelAnimationFrame(raf);
       if (stream) stopCamera(stream);
+      audioSourceRef.current?.stop();
     };
   }, []);
+
+  function stopAudio() {
+    audioSourceRef.current?.stop();
+    audioSourceRef.current = null;
+    audioElRef.current = null;
+    beatDetectorRef.current = null;
+  }
+
+  async function handleSelectSong(selected: SongInfo) {
+    stopAudio();
+    setSong(selected);
+    setMicMode(false);
+    setBpm(0);
+
+    painterRef.current?.setPalette(getGenrePreset(selected.genre).colorPalette);
+
+    if (!selected.previewUrl) return;
+    const { source, audioEl } = createPreviewSource(selected.previewUrl);
+    audioSourceRef.current = source;
+    audioElRef.current = audioEl;
+    beatDetectorRef.current = new BeatDetector(source.analyser);
+    try {
+      await audioEl.play();
+    } catch (err) {
+      console.warn('[audio] preview autoplay blocked, will require another click', err);
+    }
+
+    analyzePreviewBpm(selected.previewUrl, source.ctx).then((result) => {
+      if (result && result.bpm > 0) setBpm(result.bpm);
+    });
+  }
+
+  async function handleMicMode() {
+    stopAudio();
+    setSong(null);
+    setMicMode(true);
+    setBpm(0);
+    try {
+      const source = await createMicSource();
+      audioSourceRef.current = source;
+      beatDetectorRef.current = new BeatDetector(source.analyser);
+    } catch (err) {
+      console.error('[audio] mic access failed', err);
+      setMicMode(false);
+    }
+  }
+
+  function handleChangeSong() {
+    stopAudio();
+    setSong(null);
+    setMicMode(false);
+    setBpm(0);
+  }
 
   function handleStart() {
     const recorder = new MotionTapeRecorder('session');
@@ -146,7 +224,8 @@ export function StageScreen() {
   function handleStop() {
     dancingRef.current = false;
     setDancing(false);
-    const finished = recorderRef.current?.stop() ?? null;
+    audioElRef.current?.pause(); // "Terminar" must actually stop the music
+    const finished = recorderRef.current?.stop(bpm) ?? null;
     setTape(finished);
   }
 
@@ -154,7 +233,8 @@ export function StageScreen() {
     if (!tape) return;
     setReplaying(true);
     try {
-      const result = replayTape(tape, DEFAULT_PALETTE, 2048, 2560);
+      const palette = song ? getGenrePreset(song.genre).colorPalette : DEFAULT_PALETTE;
+      const result = replayTape(tape, palette, 2048, 2560);
       const blob = await result.toBlob();
       setReplayUrl(URL.createObjectURL(blob));
     } finally {
@@ -162,34 +242,44 @@ export function StageScreen() {
     }
   }
 
+  const readyToDance = !!song || micMode;
+
   return (
     <main style={{ fontFamily: 'system-ui, sans-serif', color: 'var(--ink)', background: 'var(--bg)', minHeight: '100vh' }}>
-      <div style={{ padding: '1.5rem 2rem 0' }}>
-        <h1 style={{ margin: 0 }}>Danza</h1>
-        <p style={{ opacity: 0.7, margin: '0.25rem 0 1rem' }}>Baila. Exprésate. Conviértete en arte.</p>
+      <div style={{ padding: '0.75rem 2rem 0', textAlign: 'center' }}>
+        <h1 style={{ margin: 0, fontSize: 22 }}>Danza</h1>
       </div>
 
-      <div style={{ position: 'relative', width: CANVAS_W, height: CANVAS_H, margin: '0 auto', background: '#000', borderRadius: 12, overflow: 'hidden' }}>
-        <canvas ref={paintCanvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
-        <canvas ref={sparkleCanvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
-
-        <div style={{ position: 'absolute', top: 12, right: 12, width: 220, borderRadius: 8, overflow: 'hidden', border: '2px solid rgba(255,255,255,0.3)' }}>
-          <video ref={videoRef} style={{ width: '100%', display: 'block', transform: 'scaleX(-1)' }} />
-          <canvas ref={skeletonCanvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+      {!readyToDance && !dancing && !tape && (
+        <div style={{ margin: '0.5rem 0 1rem' }}>
+          <SongPicker onSelect={handleSelectSong} onMicMode={handleMicMode} />
         </div>
+      )}
 
-        <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.6)', padding: '4px 10px', borderRadius: 6, fontSize: 14 }}>
-          {fps} fps
+      {readyToDance && (
+        <div style={{ textAlign: 'center', margin: '0.25rem 0 0.5rem' }}>
+          {song ? (
+            <p style={{ margin: 0 }}>
+              🎵 {song.title} — {song.artist} {bpm > 0 && `· ${bpm} BPM`}{' '}
+              {!dancing && <button onClick={handleChangeSong} style={{ marginLeft: 8 }}>cambiar</button>}
+            </p>
+          ) : (
+            <p style={{ margin: 0 }}>
+              🎤 Modo micrófono {bpm > 0 && `· ${bpm} BPM`}{' '}
+              {!dancing && <button onClick={handleChangeSong} style={{ marginLeft: 8 }}>cambiar</button>}
+            </p>
+          )}
         </div>
-      </div>
+      )}
 
-      <div style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+      {/* Controls placed above the canvas — always visible without scrolling. */}
+      <div style={{ textAlign: 'center', margin: '0.5rem 0' }}>
         {!dancing ? (
-          <button onClick={handleStart} style={{ fontSize: 18, padding: '0.75rem 2rem', borderRadius: 999 }}>
+          <button onClick={handleStart} disabled={!readyToDance} style={{ fontSize: 20, padding: '0.85rem 2.5rem', borderRadius: 999, fontWeight: 700 }}>
             ▶ Empezar a bailar
           </button>
         ) : (
-          <button onClick={handleStop} style={{ fontSize: 18, padding: '0.75rem 2rem', borderRadius: 999 }}>
+          <button onClick={handleStop} style={{ fontSize: 20, padding: '0.85rem 2.5rem', borderRadius: 999, fontWeight: 700 }}>
             ■ Terminar
           </button>
         )}
@@ -201,10 +291,24 @@ export function StageScreen() {
       </div>
 
       {tape && (
-        <p style={{ textAlign: 'center', opacity: 0.6, fontSize: 13 }}>
-          {tape.frames.length} frames · {(tape.durationMs / 1000).toFixed(1)}s
+        <p style={{ textAlign: 'center', opacity: 0.6, fontSize: 13, margin: '0 0 0.5rem' }}>
+          {tape.frames.length} frames · {(tape.durationMs / 1000).toFixed(1)}s · {tape.beats.length} beats · {tape.bpm} BPM
         </p>
       )}
+
+      <div style={{ position: 'relative', width: '100%', maxWidth: 720, aspectRatio: `${CANVAS_W} / ${CANVAS_H}`, margin: '0 auto', background: '#000', borderRadius: 12, overflow: 'hidden' }}>
+        <canvas ref={paintCanvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+        <canvas ref={sparkleCanvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+
+        <div style={{ position: 'absolute', top: 12, right: 12, width: '18%', minWidth: 100, borderRadius: 8, overflow: 'hidden', border: '2px solid rgba(255,255,255,0.3)' }}>
+          <video ref={videoRef} style={{ width: '100%', display: 'block', transform: 'scaleX(-1)' }} />
+          <canvas ref={skeletonCanvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+        </div>
+
+        <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.6)', padding: '4px 10px', borderRadius: 6, fontSize: 14 }}>
+          {fps} fps
+        </div>
+      </div>
 
       {replayUrl && (
         <div style={{ textAlign: 'center', margin: '1rem 0' }}>
