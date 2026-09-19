@@ -39,6 +39,20 @@ export function detectPose(video: HTMLVideoElement): PoseLandmarkerResult | null
   return landmarker.detectForVideo(video, performance.now());
 }
 
+/**
+ * For offline/uploaded-video processing (driven by requestVideoFrameCallback, which already
+ * guarantees a new decoded frame per call — the live-path dedup guard doesn't apply and would
+ * be actively wrong here). Still passes performance.now() to MediaPipe (not video.currentTime)
+ * because detectForVideo requires strictly-increasing timestamps across the ONE shared
+ * landmarker instance — video.currentTime can be far smaller than a live session's already-
+ * advanced wall-clock cursor. The caller tracks video.currentTime separately for the actual
+ * tape-relative MotionFrame timestamp.
+ */
+export function detectPoseForce(video: HTMLVideoElement): PoseLandmarkerResult | null {
+  if (!landmarker) return null;
+  return landmarker.detectForVideo(video, performance.now());
+}
+
 export function closePose(): void {
   landmarker?.close();
   landmarker = null;

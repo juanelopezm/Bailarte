@@ -105,11 +105,21 @@ export async function getHealth(): Promise<{ ok: boolean }> {
 }
 
 export interface HostInfo {
-  lanUrl: string;
+  lanUrl: string | null;
 }
 
 export async function getHostInfo(): Promise<HostInfo> {
   const res = await fetch('/api/host-info');
   if (!res.ok) throw new Error(`host-info failed: ${res.status}`);
+  return res.json();
+}
+
+export async function uploadVideo(session: string, name: string, base64: string): Promise<{ url: string }> {
+  const res = await fetch('/api/upload', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ session, name, base64 }),
+  });
+  if (!res.ok) throw new Error(`upload failed: ${res.status}`);
   return res.json();
 }

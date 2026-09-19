@@ -32,6 +32,9 @@ app.get('/api/gallery', getGallery);
 app.post('/api/gallery', createGalleryEntry);
 app.post('/api/gallery/:id/artifact/:name', uploadArtifact);
 app.get('/api/halloffame', getHallOfFame);
+app.get('/api/host-info', getHostInfo);
+app.post('/api/upload', uploadVideo);
+app.use('/api/upload', express.static(path.join(dataDir, 'sessions')));
 
 // Static-served artifacts (posters, paintings, sculpture exports) — see plan §L.
 app.use('/artifacts', express.static(path.join(dataDir, 'artifacts')));

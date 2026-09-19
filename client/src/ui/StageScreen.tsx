@@ -3,8 +3,10 @@
 // pulses into the painter), and genre pre-tint on song pick. Song stays a BACKDROP signal only
 // — see plan's core principle: culture/mood/color come from the PERSON, never the song.
 import { useEffect, useRef, useState } from 'react';
-import { getHealth } from '../net/api.ts';
+import { customAlphabet } from 'nanoid';
+import { getHealth, searchSongs } from '../net/api.ts';
 import { WsClient } from '../net/ws.ts';
+import { RtcPeer } from '../net/rtc.ts';
 import { useAppStore } from '../state/store.ts';
 import { startCamera, stopCamera } from '../capture/camera.ts';
 import { initPose, isPoseReady, detectPose } from '../capture/pose.ts';
@@ -14,11 +16,14 @@ import { FeatureTracker } from '../capture/features.ts';
 import { LivePainter } from '../art/livePainter.ts';
 import { replayTape } from '../art/hiResReplay.ts';
 import { SongPicker } from './SongPicker.tsx';
+import { QRJoin } from './QRJoin.tsx';
 import { createPreviewSource, createMicSource, type AudioSource } from '../audio/engine.ts';
 import { BeatDetector } from '../audio/beats.ts';
 import { analyzePreviewBpm } from '../audio/preview.ts';
 import { getGenrePreset } from '@shared/palettes.ts';
+import { pickRandomSong } from '@shared/playlist.ts';
 import { KeyframeCapture } from '../capture/keyframes.ts';
+import { processUploadedVideo } from '../capture/offline.ts';
 import { analyzeQuick, analyzeFull, generatePainting, createGalleryEntry, uploadGalleryArtifact, type AnalysisHints } from '../net/api.ts';
 import { composePoster, canvasToBlob } from '../poster/composePoster.ts';
 import { applyPalette } from './theme.ts';
@@ -27,6 +32,8 @@ import { RevealFlow, type RevealStage } from './RevealFlow.tsx';
 import { SculptureView } from '../sculpture/SculptureView.tsx';
 import type { FrameFeatures } from '../capture/features.ts';
 import type { DanceStats, MotionTape, SongInfo, VisionAnalysis } from '@shared/types.ts';
+
+const sessionCodeAlphabet = customAlphabet('23456789ABCDEFGHJKMNPQRSTUVWXYZ', 4);
 
 function energyWordFrom(e: number): string {
   if (e < 0.25) return 'suave';
@@ -44,6 +51,7 @@ const DEFAULT_PALETTE = ['#1a1025', '#3d2b56', '#a13d63', '#e8615a', '#f5b642', 
 
 export function StageScreen() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const phoneVideoRef = useRef<HTMLVideoElement>(null);
   const skeletonCanvasRef = useRef<HTMLCanvasElement>(null);
   const paintCanvasRef = useRef<HTMLCanvasElement>(null);
   const sparkleCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -68,6 +76,12 @@ export function StageScreen() {
   const [dancerName, setDancerName] = useState('');
   const [galleryState, setGalleryState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const sculptureSnapshotRef = useRef<(() => string | null) | null>(null);
+  const [sessionCode] = useState(sessionCodeAlphabet);
+  const [peerCount, setPeerCount] = useState(0);
+  const [phoneStream, setPhoneStream] = useState<MediaStream | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const rtcPeerRef = useRef<RtcPeer | null>(null);
+  const wsClientRef = useRef<WsClient | null>(null);
   const wsConnected = useAppStore((s) => s.wsConnected);
   const setWsConnected = useAppStore((s) => s.setWsConnected);
 
@@ -85,8 +99,10 @@ export function StageScreen() {
   const songRef = useRef<SongInfo | null>(null);
   const bpmRef = useRef(0);
   const micHintRef = useRef('');
+  const readyToDanceRef = useRef(false);
   songRef.current = song;
   bpmRef.current = bpm;
+  readyToDanceRef.current = !!song || micMode;
   micHintRef.current = micHint;
 
   function buildHints(): AnalysisHints {
@@ -102,14 +118,78 @@ export function StageScreen() {
     };
   }
 
+  async function handleRemoteSurprise() {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const entry = pickRandomSong();
+      try {
+        const found = await searchSongs(entry.search);
+        if (found.length > 0) {
+          await handleSelectSong(found[0]);
+          return;
+        }
+      } catch (err) {
+        console.warn('[remote] surprise search failed', err);
+      }
+    }
+  }
+
+  async function handleUploadedVideo(url: string) {
+    setUploadProgress(0);
+    try {
+      const { tape, keyframes } = await processUploadedVideo(url, { onProgress: setUploadProgress });
+      setUploadProgress(null);
+      await revealFromTape(tape, crypto.randomUUID(), keyframes, buildHints());
+    } catch (err) {
+      console.error('[upload] offline processing failed', err);
+      setUploadProgress(null);
+    }
+  }
+
   useEffect(() => {
     getHealth().then(() => setApiOk('ok')).catch(() => setApiOk('fail'));
     const client = new WsClient();
+    wsClientRef.current = client;
     const offConn = client.onConnectionChange(setWsConnected);
+    const offMsg = client.onMessage((msg) => {
+      switch (msg.type) {
+        case 'joined':
+          setPeerCount(msg.peers - 1); // exclude the host itself
+          break;
+        case 'peer-joined':
+          if (msg.role === 'phone') setPeerCount((n) => n + 1);
+          break;
+        case 'peer-left':
+          if (msg.role === 'phone') setPeerCount((n) => Math.max(0, n - 1));
+          break;
+        case 'control':
+          if (msg.action === 'start') { if (!readyToDanceRef.current) void handleRemoteSurprise().then(handleStart); else handleStart(); }
+          else if (msg.action === 'stop') void handleStop();
+          else if (msg.action === 'surprise') void handleRemoteSurprise();
+          break;
+        case 'rtc': {
+          // Host is always the answerer — lazily create the peer connection on the first offer.
+          if (!rtcPeerRef.current) {
+            const peer = new RtcPeer(false, (m) => client.send(m), setPhoneStream);
+            rtcPeerRef.current = peer;
+          }
+          void rtcPeerRef.current.handleSignal(msg);
+          break;
+        }
+        case 'upload-ready':
+          void handleUploadedVideo(msg.url);
+          break;
+        default:
+          break;
+      }
+    });
     client.connect();
-    client.send({ type: 'join', session: 'DIAG', role: 'host' });
-    return () => { offConn(); client.close(); };
-  }, [setWsConnected]);
+    client.send({ type: 'join', session: sessionCode, role: 'host' });
+    return () => { offConn(); offMsg(); client.close(); };
+  }, [setWsConnected, sessionCode]);
+
+  useEffect(() => {
+    if (phoneVideoRef.current) phoneVideoRef.current.srcObject = phoneStream;
+  }, [phoneStream]);
 
   useEffect(() => {
     let raf = 0;
@@ -305,13 +385,11 @@ export function StageScreen() {
     setDancing(true);
   }
 
-  async function handleStop() {
-    dancingRef.current = false;
-    setDancing(false);
-    audioElRef.current?.pause(); // "Terminar" must actually stop the music
-    const finished = recorderRef.current?.stop(bpm) ?? null;
+  // Shared by the live-dance stop AND an uploaded video (plan §K: upload reuses 100% of the
+  // reveal pipeline) — the only difference is where the tape and keyframes came from.
+  async function revealFromTape(finished: MotionTape, danceId: string, keyframeSource: KeyframeCapture, hints: AnalysisHints) {
     setTape(finished);
-    if (!finished || finished.frames.length === 0) return;
+    if (finished.frames.length === 0) return;
 
     const stats = computeStats(finished);
     setDanceStats(stats);
@@ -320,15 +398,14 @@ export function StageScreen() {
     // Stage B: authoritative full-dance analysis (drives final theme + reveal palette + the
     // Gemini prompt). Falls back to a neutral analysis only if the request itself fails
     // (analyzeVision on the server never throws — it has its own genre-preset fallback ladder).
-    const frames = keyframeCaptureRef.current.pickForFullAnalysis(8).map((f) => f.base64);
+    const neutralFallback: VisionAnalysis = { culture: 'universal', danceStyle: 'libre', mood: 'energético', colorPalette: DEFAULT_PALETTE, artStyleReferences: ['abstracto'], perceivedExperience: 'pura energía en movimiento', movementKeywords: ['libre'], fromVision: false };
+    const frames = keyframeSource.pickForFullAnalysis(8).map((f) => f.base64);
     let finalAnalysis: VisionAnalysis;
     try {
-      finalAnalysis = frames.length > 0
-        ? await analyzeFull(danceIdRef.current, frames, buildHints())
-        : { culture: 'universal', danceStyle: 'libre', mood: 'energético', colorPalette: DEFAULT_PALETTE, artStyleReferences: ['abstracto'], perceivedExperience: 'pura energía en movimiento', movementKeywords: ['libre'], fromVision: false };
+      finalAnalysis = frames.length > 0 ? await analyzeFull(danceId, frames, hints) : neutralFallback;
     } catch (err) {
       console.warn('[analyze] full failed, using neutral fallback', err);
-      finalAnalysis = { culture: 'universal', danceStyle: 'libre', mood: 'energético', colorPalette: DEFAULT_PALETTE, artStyleReferences: ['abstracto'], perceivedExperience: 'pura energía en movimiento', movementKeywords: ['libre'], fromVision: false };
+      finalAnalysis = neutralFallback;
     }
     setAnalysis(finalAnalysis);
     applyPalette(finalAnalysis.colorPalette);
@@ -340,7 +417,7 @@ export function StageScreen() {
 
     setRevealStage('painting');
     try {
-      const result = await generatePainting(danceIdRef.current, finalAnalysis, stats, replayBase64);
+      const result = await generatePainting(danceId, finalAnalysis, stats, replayBase64);
       if (result.fallback || !result.imageBase64) {
         setPaintingBase64(replayBase64);
         setUsingFallbackPainting(true);
@@ -354,6 +431,15 @@ export function StageScreen() {
       setUsingFallbackPainting(true);
     }
     setRevealStage('done');
+  }
+
+  async function handleStop() {
+    dancingRef.current = false;
+    setDancing(false);
+    audioElRef.current?.pause(); // "Terminar" must actually stop the music
+    const finished = recorderRef.current?.stop(bpm) ?? null;
+    if (!finished) return;
+    await revealFromTape(finished, danceIdRef.current, keyframeCaptureRef.current, buildHints());
   }
 
   async function handleSaveToGallery() {
@@ -416,6 +502,18 @@ export function StageScreen() {
         </h1>
         <p style={{ margin: '4px 0 0', color: 'var(--ink-dim)', fontSize: 14 }}>Baila. Exprésate. Conviértete en arte.</p>
       </header>
+
+      {!dancing && (
+        <div style={{ margin: '1rem auto', maxWidth: 280 }}>
+          <QRJoin sessionCode={sessionCode} peerCount={peerCount} />
+        </div>
+      )}
+
+      {uploadProgress !== null && (
+        <p style={{ textAlign: 'center', color: 'var(--ink-dim)', fontSize: 14 }}>
+          📹 Procesando video subido… {Math.round(uploadProgress * 100)}%
+        </p>
+      )}
 
       {!readyToDance && !dancing && !tape && (
         <div style={{ margin: '1.5rem auto 1rem', maxWidth: 520, padding: '0 1rem' }}>
@@ -487,6 +585,13 @@ export function StageScreen() {
           <video ref={videoRef} style={{ width: '100%', display: 'block', transform: 'scaleX(-1)' }} />
           <canvas ref={skeletonCanvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
         </div>
+
+        {phoneStream && (
+          <div style={{ position: 'absolute', top: '25%', right: 12, width: '18%', minWidth: 100, borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '2px solid var(--accent)', boxShadow: 'var(--shadow-md)' }}>
+            <video ref={phoneVideoRef} autoPlay playsInline style={{ width: '100%', display: 'block' }} />
+            <div style={{ position: 'absolute', bottom: 2, left: 4, fontSize: 9, background: 'rgba(0,0,0,0.6)', padding: '1px 6px', borderRadius: 4 }}>📱</div>
+          </div>
+        )}
 
         <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', padding: '3px 10px', borderRadius: 999, fontSize: 12, color: 'var(--ink-dim)' }}>
           {fps} fps
