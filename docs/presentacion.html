@@ -422,7 +422,15 @@
     .principle p.support{ font-size:11px; line-height:1.4; }
 
     .closing{ padding:14px 20px 2px; }
-    .closing .cta{ font-size:21px; margin-bottom:4px; }
+    .closing .cta{
+      font-size:21px; margin-bottom:4px;
+      /* Chrome's print/PDF pipeline can rasterize background-clip:text as a
+         solid block instead of clipped text — fall back to a plain solid
+         color for reliable print output. */
+      background:none;
+      -webkit-text-fill-color:var(--magenta);
+      color:var(--magenta);
+    }
     .closing .sub{ font-size:10.5px; }
 
     footer.strip{ height:9px; margin-top:12px; }
