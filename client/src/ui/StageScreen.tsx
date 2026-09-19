@@ -23,6 +23,7 @@ import { analyzeQuick, analyzeFull, generatePainting, type AnalysisHints } from 
 import { applyPalette } from './theme.ts';
 import { computeStats } from '../capture/stats.ts';
 import { RevealFlow, type RevealStage } from './RevealFlow.tsx';
+import { SculptureView } from '../sculpture/SculptureView.tsx';
 import type { FrameFeatures } from '../capture/features.ts';
 import type { DanceStats, MotionTape, SongInfo, VisionAnalysis } from '@shared/types.ts';
 
@@ -462,6 +463,10 @@ export function StageScreen() {
         <div style={{ textAlign: 'center', margin: '0.5rem 0 1.5rem' }}>
           <a href={paintingUrl} download="obra.png" style={{ color: 'var(--c5)' }}>Descargar obra</a>
         </div>
+      )}
+
+      {revealStage === 'done' && tape && (
+        <SculptureView tape={tape} palette={analysis?.colorPalette ?? DEFAULT_PALETTE} />
       )}
 
       {replayUrl && (
