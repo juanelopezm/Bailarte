@@ -155,26 +155,33 @@ export function SculptureView({ tape, palette, onSnapshotReady }: Props) {
   }
 
   return (
-    <div style={{ maxWidth: 640, margin: '1.5rem auto' }}>
-      <div ref={containerRef} style={{ width: '100%', height: 400, borderRadius: 12, overflow: 'hidden', background: '#050505' }} />
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 10, flexWrap: 'wrap' }}>
+    <div style={{ maxWidth: 640, margin: '1.5rem auto', padding: '0 1rem' }}>
+      <p style={{ textAlign: 'center', fontFamily: 'var(--font-display)', fontSize: 18, margin: '0 0 10px', color: 'var(--ink-dim)' }}>
+        ✨ tu escultura
+      </p>
+      <div ref={containerRef} className="card" style={{ width: '100%', height: 400, overflow: 'hidden', background: '#050505' }} />
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12, flexWrap: 'wrap' }}>
         {(['orbit', 'stream', 'spiral'] as UnfurlMode[]).map((m) => (
           <button
             key={m}
             onClick={() => setMode(m)}
-            style={{ padding: '0.4rem 1rem', borderRadius: 999, opacity: mode === m ? 1 : 0.5, fontWeight: mode === m ? 700 : 400 }}
+            style={{
+              padding: '0.45rem 1.1rem', borderRadius: 999, fontSize: 13,
+              background: mode === m ? 'color-mix(in srgb, var(--accent) 25%, var(--bg-elevated))' : 'var(--bg-elevated)',
+              borderColor: mode === m ? 'var(--accent)' : 'var(--border)',
+            }}
           >
-            {m === 'orbit' ? 'órbita' : m === 'stream' ? 'flujo' : 'espiral'}
+            {m === 'orbit' ? '🔄 órbita' : m === 'stream' ? '➡️ flujo' : '🌀 espiral'}
           </button>
         ))}
-        <button onClick={exportGLB} disabled={exporting !== null} style={{ padding: '0.4rem 1rem', borderRadius: 999 }}>
+        <button onClick={exportGLB} disabled={exporting !== null} style={{ padding: '0.45rem 1.1rem', borderRadius: 999, fontSize: 13 }}>
           {exporting === 'glb' ? 'exportando…' : '⬇ GLB (color)'}
         </button>
-        <button onClick={exportSTL} disabled={exporting !== null} style={{ padding: '0.4rem 1rem', borderRadius: 999 }}>
+        <button onClick={exportSTL} disabled={exporting !== null} style={{ padding: '0.45rem 1.1rem', borderRadius: 999, fontSize: 13 }}>
           {exporting === 'stl' ? 'exportando…' : '⬇ STL (imprimible)'}
         </button>
       </div>
-      <p style={{ textAlign: 'center', opacity: 0.4, fontSize: 11, marginTop: 6 }}>
+      <p style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 11, marginTop: 8 }}>
         GLB conserva los colores. STL es para impresión 3D (sin color, escala ~10cm).
       </p>
     </div>

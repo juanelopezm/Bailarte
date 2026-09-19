@@ -1,9 +1,9 @@
 // Guest voting UI for the art battle. Built out in Phase 10.
 export function PhoneVote() {
   return (
-    <main style={{ fontFamily: 'system-ui, sans-serif', padding: '2rem', color: '#eee', background: '#111', minHeight: '100vh' }}>
-      <h1>Votación</h1>
-      <p>La batalla de arte comenzará pronto.</p>
+    <main style={{ padding: '3rem 1.5rem', minHeight: '100vh', textAlign: 'center' }}>
+      <h1 style={{ fontSize: 30 }}>Votación</h1>
+      <p style={{ color: 'var(--ink-dim)' }}>La batalla de arte comenzará pronto.</p>
     </main>
   );
 }

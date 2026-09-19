@@ -408,83 +408,86 @@ export function StageScreen() {
   const readyToDance = !!song || micMode;
 
   return (
-    <main style={{ fontFamily: 'system-ui, sans-serif', color: 'var(--ink)', background: 'var(--bg)', minHeight: '100vh' }}>
-      <div style={{ padding: '0.75rem 2rem 0', textAlign: 'center' }}>
-        <h1 style={{ margin: 0, fontSize: 22 }}>Danza</h1>
-      </div>
+    <main style={{ minHeight: '100vh', paddingBottom: '3rem' }}>
+      <header style={{ padding: '2rem 1.5rem 0.5rem', textAlign: 'center' }}>
+        <h1 style={{ margin: 0, fontSize: 34, fontWeight: 600, background: 'linear-gradient(135deg, var(--c4), var(--c5))', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
+          Danza
+        </h1>
+        <p style={{ margin: '4px 0 0', color: 'var(--ink-dim)', fontSize: 14 }}>Baila. Exprésate. Conviértete en arte.</p>
+      </header>
 
       {!readyToDance && !dancing && !tape && (
-        <div style={{ margin: '0.5rem 0 1rem' }}>
+        <div style={{ margin: '1.5rem auto 1rem', maxWidth: 520, padding: '0 1rem' }}>
           <SongPicker onSelect={handleSelectSong} onMicMode={handleMicMode} />
         </div>
       )}
 
       {readyToDance && (
-        <div style={{ textAlign: 'center', margin: '0.25rem 0 0.5rem' }}>
-          {song ? (
-            <p style={{ margin: 0 }}>
-              🎵 {song.title} — {song.artist} {bpm > 0 && `· ${bpm} BPM`}{' '}
-              {!dancing && <button onClick={handleChangeSong} style={{ marginLeft: 8 }}>cambiar</button>}
-            </p>
-          ) : (
-            <>
-              <p style={{ margin: 0 }}>
-                🎤 Modo micrófono {bpm > 0 && `· ${bpm} BPM`}{' '}
-                {!dancing && <button onClick={handleChangeSong} style={{ marginLeft: 8 }}>cambiar</button>}
+        <div style={{ textAlign: 'center', margin: '1rem auto 0.75rem', maxWidth: 480 }}>
+          <div className="card" style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '0.6rem 1.25rem' }}>
+            {song ? (
+              <p style={{ margin: 0, fontSize: 15 }}>
+                🎵 <strong>{song.title}</strong> — {song.artist} {bpm > 0 && <span style={{ color: 'var(--accent)' }}>· {bpm} BPM</span>}{' '}
+                {!dancing && <button onClick={handleChangeSong} style={{ marginLeft: 6, fontSize: 12, padding: '2px 10px', borderRadius: 999 }}>cambiar</button>}
               </p>
-              {!dancing && (
-                <input
-                  value={micHint}
-                  onChange={(e) => setMicHint(e.target.value)}
-                  placeholder="¿Qué canción está sonando? (opcional)"
-                  style={{ marginTop: 6, padding: '0.4rem 0.75rem', borderRadius: 999, border: '1px solid #444', background: '#1a1a1a', color: '#eee', fontSize: 13, width: 280 }}
-                />
-              )}
-            </>
-          )}
+            ) : (
+              <>
+                <p style={{ margin: 0, fontSize: 15 }}>
+                  🎤 Modo micrófono {bpm > 0 && <span style={{ color: 'var(--accent)' }}>· {bpm} BPM</span>}{' '}
+                  {!dancing && <button onClick={handleChangeSong} style={{ marginLeft: 6, fontSize: 12, padding: '2px 10px', borderRadius: 999 }}>cambiar</button>}
+                </p>
+                {!dancing && (
+                  <input
+                    value={micHint}
+                    onChange={(e) => setMicHint(e.target.value)}
+                    placeholder="¿Qué canción está sonando? (opcional)"
+                    style={{ padding: '0.4rem 0.9rem', borderRadius: 999, fontSize: 13, width: 280 }}
+                  />
+                )}
+              </>
+            )}
+          </div>
         </div>
       )}
 
       {/* Controls placed above the canvas — always visible without scrolling. */}
-      <div style={{ textAlign: 'center', margin: '0.5rem 0' }}>
+      <div style={{ textAlign: 'center', margin: '1rem 0' }}>
         {!dancing ? (
-          <button onClick={handleStart} disabled={!readyToDance} style={{ fontSize: 20, padding: '0.85rem 2.5rem', borderRadius: 999, fontWeight: 700 }}>
+          <button className="btn-primary" onClick={handleStart} disabled={!readyToDance} style={{ fontSize: 19, padding: '0.9rem 2.75rem', borderRadius: 999 }}>
             ▶ Empezar a bailar
           </button>
         ) : (
-          <button onClick={handleStop} style={{ fontSize: 20, padding: '0.85rem 2.5rem', borderRadius: 999, fontWeight: 700 }}>
+          <button className="btn-primary" onClick={handleStop} style={{ fontSize: 19, padding: '0.9rem 2.75rem', borderRadius: 999 }}>
             ■ Terminar
-          </button>
-        )}
-        {tape && !dancing && (
-          <button onClick={handleReplay} disabled={replaying} style={{ marginLeft: 12, fontSize: 14, padding: '0.5rem 1.25rem', borderRadius: 999 }}>
-            {replaying ? 'Generando…' : '🔁 Replay hi-res (dev)'}
           </button>
         )}
       </div>
 
       {tape && (
-        <p style={{ textAlign: 'center', opacity: 0.6, fontSize: 13, margin: '0 0 0.5rem' }}>
+        <p style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 12, margin: '0 0 0.5rem' }}>
           {tape.frames.length} frames · {(tape.durationMs / 1000).toFixed(1)}s · {tape.beats.length} beats · {tape.bpm} BPM
         </p>
       )}
 
       {dancing && !analysis && (
-        <p style={{ textAlign: 'center', opacity: 0.5, fontSize: 13, margin: '0 0 0.5rem' }}>
+        <p style={{ textAlign: 'center', color: 'var(--ink-dim)', fontSize: 13, margin: '0 0 0.75rem', animation: 'pulse-fade 2s ease-in-out infinite' }}>
           👁️ observando tu movimiento…
         </p>
       )}
 
-      <div style={{ position: 'relative', width: '100%', maxWidth: 720, aspectRatio: `${CANVAS_W} / ${CANVAS_H}`, margin: '0 auto', background: '#000', borderRadius: 12, overflow: 'hidden' }}>
+      <div
+        className="card"
+        style={{ position: 'relative', width: '100%', maxWidth: 720, aspectRatio: `${CANVAS_W} / ${CANVAS_H}`, margin: '0 auto', background: '#000', overflow: 'hidden', boxShadow: 'var(--shadow-lg)' }}
+      >
         <canvas ref={paintCanvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
         <canvas ref={sparkleCanvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
 
-        <div style={{ position: 'absolute', top: 12, right: 12, width: '18%', minWidth: 100, borderRadius: 8, overflow: 'hidden', border: '2px solid rgba(255,255,255,0.3)' }}>
+        <div style={{ position: 'absolute', top: 12, right: 12, width: '18%', minWidth: 100, borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.25)', boxShadow: 'var(--shadow-md)' }}>
           <video ref={videoRef} style={{ width: '100%', display: 'block', transform: 'scaleX(-1)' }} />
           <canvas ref={skeletonCanvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
         </div>
 
-        <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.6)', padding: '4px 10px', borderRadius: 6, fontSize: 14 }}>
+        <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', padding: '3px 10px', borderRadius: 999, fontSize: 12, color: 'var(--ink-dim)' }}>
           {fps} fps
         </div>
       </div>
@@ -501,7 +504,7 @@ export function StageScreen() {
 
       {paintingUrl && revealStage === 'done' && (
         <div style={{ textAlign: 'center', margin: '0.5rem 0 1.5rem' }}>
-          <a href={paintingUrl} download="obra.png" style={{ color: 'var(--c5)' }}>Descargar obra</a>
+          <a href={paintingUrl} download="obra.png" style={{ color: 'var(--accent)', fontSize: 14, fontWeight: 600 }}>⬇ Descargar obra</a>
         </div>
       )}
 
@@ -514,44 +517,62 @@ export function StageScreen() {
       )}
 
       {revealStage === 'done' && analysis && danceStats && (
-        <div style={{ textAlign: 'center', margin: '1rem 0 2rem' }}>
+        <div className="card" style={{ textAlign: 'center', margin: '1rem auto 2rem', padding: '1.25rem 1.5rem', maxWidth: 420 }}>
           {galleryState !== 'saved' ? (
             <>
-              <input
-                value={dancerName}
-                onChange={(e) => setDancerName(e.target.value)}
-                placeholder="Tu nombre"
-                style={{ padding: '0.5rem 1rem', borderRadius: 999, border: '1px solid #444', background: '#1a1a1a', color: '#eee', fontSize: 14, marginRight: 8 }}
-              />
-              <button
-                onClick={handleSaveToGallery}
-                disabled={!dancerName.trim() || galleryState === 'saving'}
-                style={{ padding: '0.5rem 1.5rem', borderRadius: 999 }}
-              >
-                {galleryState === 'saving' ? 'Guardando…' : '💾 Guardar en la galería'}
-              </button>
-              {galleryState === 'error' && <p style={{ color: '#e8615a', fontSize: 13 }}>Error al guardar — intenta de nuevo.</p>}
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: 'var(--ink-dim)' }}>Guarda tu obra en la galería de la fiesta</p>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <input
+                  value={dancerName}
+                  onChange={(e) => setDancerName(e.target.value)}
+                  placeholder="Tu nombre"
+                  style={{ padding: '0.5rem 1rem', borderRadius: 999, fontSize: 14 }}
+                />
+                <button
+                  className="btn-primary"
+                  onClick={handleSaveToGallery}
+                  disabled={!dancerName.trim() || galleryState === 'saving'}
+                  style={{ padding: '0.5rem 1.5rem', borderRadius: 999 }}
+                >
+                  {galleryState === 'saving' ? 'Guardando…' : '💾 Guardar'}
+                </button>
+              </div>
+              {galleryState === 'error' && <p style={{ color: 'var(--c4)', fontSize: 13, marginTop: 8 }}>Error al guardar — intenta de nuevo.</p>}
             </>
           ) : (
-            <p style={{ opacity: 0.8 }}>✅ Guardado en la galería como "{dancerName}"</p>
+            <p style={{ margin: 0, fontSize: 15 }}>✅ Guardado en la galería como "<strong>{dancerName}</strong>"</p>
           )}
         </div>
       )}
 
-      {replayUrl && (
-        <div style={{ textAlign: 'center', margin: '1rem 0' }}>
-          <img src={replayUrl} alt="hi-res replay (manual dev tool)" style={{ maxWidth: 300, borderRadius: 8, border: '1px solid #444' }} />
-          <div>
-            <a href={replayUrl} download="replay.png" style={{ color: 'var(--c5)' }}>Descargar PNG (dev)</a>
-          </div>
+      <details style={{ maxWidth: 480, margin: '2rem auto 0', textAlign: 'center' }}>
+        <summary style={{ cursor: 'pointer', color: 'var(--ink-faint)', fontSize: 12 }}>herramientas de desarrollo</summary>
+        <div style={{ marginTop: 10 }}>
+          {tape && !dancing && (
+            <button onClick={handleReplay} disabled={replaying} style={{ fontSize: 13, padding: '0.4rem 1rem', borderRadius: 999 }}>
+              {replaying ? 'Generando…' : '🔁 Replay hi-res'}
+            </button>
+          )}
+          {replayUrl && (
+            <div style={{ marginTop: 10 }}>
+              <img src={replayUrl} alt="hi-res replay (dev)" style={{ maxWidth: 220, borderRadius: 8, border: '1px solid var(--border)' }} />
+              <div><a href={replayUrl} download="replay.png" style={{ color: 'var(--accent)', fontSize: 12 }}>Descargar PNG</a></div>
+            </div>
+          )}
+          <p style={{ color: 'var(--ink-faint)', fontSize: 11, marginTop: 10 }}>
+            API: {apiOk === 'checking' ? '…' : apiOk === 'ok' ? '✅' : '❌'} ·{' '}
+            WS: {wsConnected ? '✅' : '⏳'} ·{' '}
+            Pose: {poseStatus === 'loading' ? '…' : poseStatus === 'ready' ? '✅' : '❌'}
+          </p>
         </div>
-      )}
+      </details>
 
-      <footer style={{ padding: '1rem 2rem', opacity: 0.6, fontSize: 13, textAlign: 'center' }}>
-        API: {apiOk === 'checking' ? 'checking…' : apiOk === 'ok' ? '✅' : '❌'} ·{' '}
-        WS: {wsConnected ? '✅' : '⏳'} ·{' '}
-        Pose: {poseStatus === 'loading' ? 'cargando…' : poseStatus === 'ready' ? '✅' : '❌'}
-      </footer>
+      <style>{`
+        @keyframes pulse-fade {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 0.9; }
+        }
+      `}</style>
     </main>
   );
 }

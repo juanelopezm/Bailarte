@@ -59,33 +59,38 @@ export function SongPicker({ onSelect, onMicMode }: Props) {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Busca una canción o artista…"
-        style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: 999, border: '1px solid #444', background: '#1a1a1a', color: '#eee', fontSize: 16 }}
+        style={{ width: '100%', padding: '0.85rem 1.25rem', borderRadius: 999, fontSize: 16 }}
       />
 
-      <div style={{ display: 'flex', gap: 12, justifyContent: 'center', margin: '1rem 0' }}>
-        <button onClick={handleSurprise} disabled={surprising} style={{ padding: '0.5rem 1.25rem', borderRadius: 999 }}>
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'center', margin: '1.1rem 0', flexWrap: 'wrap' }}>
+        <button onClick={handleSurprise} disabled={surprising} style={{ padding: '0.55rem 1.25rem', borderRadius: 999, fontSize: 14 }}>
           {surprising ? 'Buscando…' : `🎲 Sorpréndeme (${SURPRISE_PLAYLIST.length} culturas)`}
         </button>
-        <button onClick={onMicMode} style={{ padding: '0.5rem 1.25rem', borderRadius: 999 }}>
-          🎤 Reproducir en vivo (micrófono)
+        <button onClick={onMicMode} style={{ padding: '0.55rem 1.25rem', borderRadius: 999, fontSize: 14 }}>
+          🎤 Micrófono en vivo
         </button>
       </div>
 
-      {loading && <p style={{ opacity: 0.6 }}>Buscando…</p>}
+      {loading && <p style={{ color: 'var(--ink-dim)', fontSize: 14 }}>Buscando…</p>}
 
-      <ul style={{ listStyle: 'none', padding: 0, textAlign: 'left' }}>
+      <ul style={{ listStyle: 'none', padding: 0, textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 4 }}>
         {results.map((song, i) => (
           <li
             key={i}
             onClick={() => onSelect(song)}
-            style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '0.5rem', cursor: 'pointer', borderRadius: 8 }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            className="card"
+            style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '0.6rem 0.75rem', cursor: 'pointer', boxShadow: 'none' }}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--accent) 50%, var(--border))')}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
           >
-            {song.artworkUrl && <img src={song.artworkUrl} alt="" width={48} height={48} style={{ borderRadius: 6 }} />}
-            <div>
-              <div>{song.title}</div>
-              <div style={{ opacity: 0.6, fontSize: 13 }}>{song.artist} · {song.genre}</div>
+            {song.artworkUrl ? (
+              <img src={song.artworkUrl} alt="" width={48} height={48} style={{ borderRadius: 8, flexShrink: 0 }} />
+            ) : (
+              <div style={{ width: 48, height: 48, borderRadius: 8, background: 'var(--c2)', flexShrink: 0 }} />
+            )}
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{song.title}</div>
+              <div style={{ color: 'var(--ink-dim)', fontSize: 13 }}>{song.artist} · {song.genre}</div>
             </div>
           </li>
         ))}
