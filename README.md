@@ -11,7 +11,7 @@ Bailarte watches you dance — with your camera, your microphone, and Claude's v
 1. **Pick a song, play one out loud, or just start the mic** — three ways to bring rhythm into the room.
 2. **Dance.** A generative painting builds itself live on screen in real time, reacting to your movement (fast/sharp gestures paint differently than slow/fluid ones) and pulsing on the beat.
 3. **Around 7 seconds in**, Claude quietly looks at a frame of you dancing and starts re-theming the whole UI and palette live — the "it's watching you" moment.
-4. **When you stop**, a full analysis pass runs, and you get a staged reveal: a digital painting (Gemini-generated when configured, otherwise a deterministic high-resolution re-render of your live painting), a rotating 3D sculpture built from your wrist/ankle/head trails (exportable as GLB or a 3D-printable STL), dance stats (duration, BPM, distance traveled, jumps, spins, beat-sync %), and a downloadable poster.
+4. **When you stop**, a full analysis pass runs, and you get a staged reveal: a digital painting (AI-generated via Cloudflare Workers AI when configured, otherwise a deterministic high-resolution re-render of your live painting), a rotating 3D sculpture built from your wrist/ankle/head trails (exportable as GLB or a 3D-printable STL), dance stats (duration, BPM, distance traveled, jumps, spins, beat-sync %), and a downloadable poster.
 5. **Save it to the gallery**, and optionally scan the QR code from a phone to add a second camera angle, control the session remotely, or upload a separately recorded clip.
 
 ## Quick start
@@ -21,7 +21,7 @@ git clone git@github.com:juanelopezm/Bailarte.git
 cd Bailarte
 npm install
 npm run fetch-models   # downloads the MediaPipe pose model + wasm runtime (self-hosted, no CDN)
-cp .env.example .env   # then fill in GEMINI_API_KEY (optional — see below)
+cp .env.example .env   # then fill in CLOUDFLARE_ACCOUNT_ID/CLOUDFLARE_API_TOKEN (optional — see below)
 npm run dev
 ```
 
@@ -31,7 +31,7 @@ Open **`https://localhost:5173`** in Chrome and accept the self-signed certifica
 
 - **Node.js 25+** (uses native TypeScript execution — no build step, no `ts-node`, no `tsx`)
 - **The `claude` CLI**, installed and logged in — this is what analyzes your dance. No separate API key needed; it uses your existing Claude Code session.
-- **A Gemini API key** (optional) — only needed for AI-generated painting images. Without one, the app automatically uses a high-resolution deterministic re-render of your live painting instead, which is a fully legitimate piece of art in its own right (see [Known limitations](#known-limitations)).
+- **A Cloudflare account + API token** (optional, genuinely free — [dash.cloudflare.com](https://dash.cloudflare.com), no credit card required) — only needed for AI-generated painting images (via Workers AI's `flux-1-schnell` model, 10,000 free neurons/day). Without one, the app automatically uses a high-resolution deterministic re-render of your live painting instead, which is a fully legitimate piece of art in its own right (see [Known limitations](#known-limitations)).
 - **Google Chrome** on the laptop — the live pose-tracking + painting pipeline is tuned for it. Phones can use Safari or Chrome.
 - A **local WiFi network** if you want phones to join — no internet connection is required for the core experience at all.
 
@@ -64,8 +64,8 @@ Bailarte/
 ├── server/                 Express + ws — the local hub
 │   └── src/
 │       ├── claude.ts        the vision-analysis pipeline (shells out to the `claude` CLI)
-│       ├── gemini.ts         Gemini image-generation wrapper (isolated — this is the piece
-│       │                     most likely to need updating as the API evolves)
+│       ├── cloudflareImage.ts Cloudflare Workers AI image-generation wrapper (isolated — this
+│       │                     is the piece most likely to need updating as the API evolves)
 │       ├── gallery.ts        JSON-file gallery persistence
 │       ├── wsHub.ts          WebSocket session rooms + signaling relay
 │       └── routes/           iTunes proxy, vision analysis, painting, gallery, upload, host-info
@@ -86,7 +86,7 @@ Bailarte/
 
 ## Known limitations
 
-- **Gemini image generation requires a billed Google Cloud project.** A personal "Gemini" subscription (Google One AI Premium, Gemini Advanced) does *not* grant API quota — that's billed separately, per-project, through [Google AI Studio](https://aistudio.google.com/apikey). Without it, `GEMINI_API_KEY` unset or unbilled, the app gracefully falls back to a deterministic high-resolution re-render of the live painting as the "digital painting" — this is not a degraded placeholder, it's a legitimate generative artwork derived directly from your actual movement data.
+- **The painting API is text-only — no image input.** `flux-1-schnell` generates purely from the text prompt; it can't take the live-painted canvas as a visual reference the way an earlier Gemini-based version of this project attempted to. (That attempt was abandoned: Gemini's image models require a *billed* Google Cloud project even on a "free tier" API key — a personal Gemini/Google One subscription does not grant API quota, which is billed separately per-project through Google AI Studio.) Without `CLOUDFLARE_ACCOUNT_ID`/`CLOUDFLARE_API_TOKEN` set, the app falls back to a deterministic high-resolution re-render of the live painting as the "digital painting" — this is not a degraded placeholder, it's a legitimate generative artwork derived directly from your actual movement data.
 - **WebRTC phone camera** needs a router that allows peer-to-peer connections on the local network. If it doesn't connect, "Subir video" (upload) is the reliable fallback and runs through the identical pipeline.
 - **Art battle / voting and the persistent hall of fame** (head-to-head voting between dancers' artworks, judged live by party guests) are designed but not yet built.
 - Tested primarily in Chrome; `requestVideoFrameCallback` (used for uploaded-video processing) isn't supported in Firefox.
@@ -94,6 +94,6 @@ Bailarte/
 ## Attribution
 
 Culture, mood, and artistic interpretation: **Claude** (via the `claude` CLI, using your own Claude Code session).
-Digital painting generation: **Google Gemini** (`gemini-3.1-flash-image`), when configured.
+Digital painting generation: **Cloudflare Workers AI** (`@cf/black-forest-labs/flux-1-schnell`), when configured.
 Pose tracking: **MediaPipe** (Google).
 Song search and previews: the **iTunes Search API**.

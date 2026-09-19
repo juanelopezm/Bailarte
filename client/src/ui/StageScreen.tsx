@@ -411,13 +411,14 @@ export function StageScreen() {
     applyPalette(finalAnalysis.colorPalette);
     painterRef.current?.setPalette(finalAnalysis.colorPalette);
 
-    // Deterministic hi-res replay — always available, doubles as the Gemini input image.
+    // Deterministic hi-res replay — always available as the guaranteed "digital painting"
+    // fallback (Cloudflare's flux-1-schnell is text-only, so it can't take this as an input).
     const replay = replayTape(finished, finalAnalysis.colorPalette, 2048, 2560);
     const replayBase64 = replay.toPngBase64();
 
     setRevealStage('painting');
     try {
-      const result = await generatePainting(danceId, finalAnalysis, stats, replayBase64);
+      const result = await generatePainting(danceId, finalAnalysis, stats);
       if (result.fallback || !result.imageBase64) {
         setPaintingBase64(replayBase64);
         setUsingFallbackPainting(true);

@@ -46,12 +46,11 @@ export async function generatePainting(
   session: string,
   analysis: VisionAnalysis,
   stats: DanceStats,
-  gesturePngBase64: string,
 ): Promise<GeneratePaintingResult> {
   const res = await fetch('/api/generate-painting', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ session, analysis, stats, gesturePngBase64 }),
+    body: JSON.stringify({ session, analysis, stats }),
   });
   if (!res.ok) throw new Error(`generate-painting failed: ${res.status}`);
   return res.json();

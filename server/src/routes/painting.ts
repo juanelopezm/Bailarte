@@ -1,8 +1,14 @@
-// Digital painting generation (plan §H). Composes the Gemini prompt from the vision analysis
+// Digital painting generation (plan §H). Composes the prompt from the vision analysis
 // (authoritative — the person's expression/movement) and dance stats (movement backdrop),
-// never from song metadata. Falls back gracefully when Gemini is unavailable/unconfigured.
+// never from song metadata. Falls back gracefully when the image API is unavailable/unconfigured.
+//
+// Uses Cloudflare Workers AI (flux-1-schnell) instead of Gemini — see README "Known
+// limitations": Gemini's image models require a billed Google Cloud project even on a
+// "free tier" key. flux-1-schnell is TEXT-ONLY (no image input), unlike Gemini, so the prompt
+// below describes the composition entirely in words rather than handing it a gesture-painting
+// skeleton to refine.
 import type { Request, Response } from 'express';
-import { paintFromGesture } from '../gemini.ts';
+import { paintFromPrompt } from '../cloudflareImage.ts';
 import type { DanceStats, VisionAnalysis } from '../../../shared/types.ts';
 
 // Visual STYLE comes purely from movement quality — never from culture/dance-tradition labels
@@ -24,34 +30,33 @@ function buildPrompt(analysis: VisionAnalysis, stats: DanceStats): string {
   const style = movementStyleFromStats(stats);
 
   return [
-    `Crea una pintura digital ${style} que interprete un baile en vivo.`,
+    `Pintura digital abstracta, ${style}, que interpreta un baile en vivo — sin ninguna referencia visual previa, compón la obra completa a partir de esta descripción.`,
     `Estado de ánimo: ${analysis.mood}. Se sintió como: "${analysis.perceivedExperience}".`,
     `Movimiento: ${durationSec} segundos de baile, ${stats.jumps} saltos, ${stats.spins} giros,`,
     `${wristTravel} metros recorridos por las muñecas, ${syncPct}% sincronizado con el ritmo a ${stats.bpm || '—'} BPM.`,
     `Enfatiza estas cualidades de movimiento observadas: ${analysis.movementKeywords.join(', ')}.`,
     `Usa EXACTAMENTE esta paleta de colores: ${analysis.colorPalette.join(', ')}.`,
-    'La imagen adjunta es una pintura gestual creada por los movimientos reales del bailarín — preserva sus trazos y composición principales como esqueleto y refínala en una obra terminada.',
+    'Composición dinámica y equilibrada, con profundidad y capas de color.',
     'Puramente abstracta: sin personas, sin caras, sin texto, sin marca de agua, sin motivos culturales o folclóricos literales. Calidad de museo.',
   ].join(' ');
 }
 
 export async function generatePainting(req: Request, res: Response) {
-  const { analysis, stats, gesturePngBase64 } = req.body as {
+  const { analysis, stats } = req.body as {
     session?: string;
     analysis?: VisionAnalysis;
     stats?: DanceStats;
-    gesturePngBase64?: string;
   };
 
-  if (!analysis || !stats || !gesturePngBase64) {
-    res.status(400).json({ error: 'missing analysis, stats, or gesturePngBase64' });
+  if (!analysis || !stats) {
+    res.status(400).json({ error: 'missing analysis or stats' });
     return;
   }
 
   const prompt = buildPrompt(analysis, stats);
   console.log('[painting] prompt:', prompt);
 
-  const buffer = await paintFromGesture(prompt, gesturePngBase64);
+  const buffer = await paintFromPrompt(prompt);
   if (!buffer) {
     res.json({ fallback: true });
     return;

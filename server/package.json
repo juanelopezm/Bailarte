@@ -8,14 +8,13 @@
   },
   "dependencies": {
     "express": "5.2.1",
-    "ws": "8.21.3",
-    "@google/genai": "2.23.0",
-    "nanoid": "6.0.1"
+    "nanoid": "6.0.1",
+    "ws": "8.21.3"
   },
   "devDependencies": {
-    "typescript": "~5.9.2",
     "@types/express": "5.0.6",
+    "@types/node": "26.6.2",
     "@types/ws": "8.18.1",
-    "@types/node": "26.6.2"
+    "typescript": "~5.9.2"
   }
 }
