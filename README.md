@@ -14,6 +14,12 @@ Bailarte watches you dance — with your camera, your microphone, and Claude's v
 4. **When you stop**, a full analysis pass runs, and you get a staged reveal: a digital painting (AI-generated via Cloudflare Workers AI when configured, otherwise a deterministic high-resolution re-render of your live painting), a rotating 3D sculpture built from your wrist/ankle/head trails (exportable as GLB or a 3D-printable STL), dance stats (duration, BPM, distance traveled, jumps, spins, beat-sync %), and a downloadable poster.
 5. **Save it to the gallery**, and optionally scan the QR code from a phone to add a second camera angle, control the session remotely, or upload a separately recorded clip.
 
+## Screenshots
+
+| Live painting while dancing | Sculpture + stats reveal | Phone QR join |
+|---|---|---|
+| ![Live pose-driven painting building up while dancing](docs/screenshots/live-painting.png) | ![3D sculpture built from motion trails, with dance stats](docs/screenshots/sculpture-reveal.png) | ![QR code screen for phones to join over WiFi](docs/screenshots/qr-join.png) |
+
 ## Quick start
 
 ```bash
