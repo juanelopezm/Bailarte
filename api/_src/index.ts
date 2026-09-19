@@ -48,7 +48,9 @@ app.get('/api/halloffame', getHallOfFame);
 
 app.get('/api/host-info', getHostInfo);
 
-app.post('/api/pusher-auth', express.urlencoded({ extended: false }), pusherAuth);
+// The client uses a customHandler (see net/realtime.ts) that POSTs JSON, not Pusher's default
+// form-encoded ajax auth transport — the global express.json() middleware above already covers it.
+app.post('/api/pusher-auth', pusherAuth);
 app.post('/api/relay', relay);
 
 app.post('/api/blob/artifact-upload', artifactUploadToken);

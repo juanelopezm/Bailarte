@@ -25,9 +25,36 @@ export class RealtimeClient {
   private session = '';
   private role: WsRole = 'phone';
 
-  // No-op: unlike WsClient, there's nothing to open until send({type:'join', ...}) tells us
-  // which session/role to subscribe as (Pusher presence auth needs both up front).
-  connect() {}
+  // Every caller follows WsClient's contract: register onConnectionChange, THEN call connect(),
+  // and only send({type:'join', ...}) once that callback fires true. A Pusher presence-channel
+  // subscription needs the role for its auth request — but if connect() did nothing until join
+  // arrived, and join never arrives until onConnectionChange fires, nothing would ever happen.
+  // The fix: open the underlying Pusher socket immediately (role-independent), and defer only
+  // the per-channel auth lookup via a customHandler that reads `this.role` at subscribe time,
+  // which by then join() has already set.
+  connect() {
+    const key = import.meta.env.VITE_PUSHER_KEY as string;
+    const cluster = import.meta.env.VITE_PUSHER_CLUSTER as string;
+    this.pusher = new Pusher(key, {
+      cluster,
+      channelAuthorization: {
+        customHandler: ({ socketId, channelName }, callback) => {
+          fetch('/api/pusher-auth', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ socket_id: socketId, channel_name: channelName, role: this.role }),
+          })
+            .then((res) => res.json())
+            .then((data) => callback(null, data))
+            .catch((err) => callback(err instanceof Error ? err : new Error(String(err)), null));
+        },
+      },
+    });
+
+    this.pusher.connection.bind('state_change', (states: { current: string }) => {
+      this.connectionListeners.forEach((cb) => cb(states.current === 'connected'));
+    });
+  }
 
   send(msg: WsMsg) {
     if (msg.type === 'join') {
@@ -44,18 +71,7 @@ export class RealtimeClient {
   }
 
   private subscribe() {
-    const key = import.meta.env.VITE_PUSHER_KEY as string;
-    const cluster = import.meta.env.VITE_PUSHER_CLUSTER as string;
-    this.pusher = new Pusher(key, {
-      cluster,
-      authEndpoint: '/api/pusher-auth',
-      auth: { params: { role: this.role } },
-    });
-
-    this.pusher.connection.bind('state_change', (states: { current: string }) => {
-      this.connectionListeners.forEach((cb) => cb(states.current === 'connected'));
-    });
-
+    if (!this.pusher) return;
     const channel = this.pusher.subscribe(`presence-session-${this.session}`) as PresenceChannel;
     this.channel = channel;
 
