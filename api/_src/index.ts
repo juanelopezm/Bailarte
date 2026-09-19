@@ -28,7 +28,7 @@ import { createGalleryEntry, uploadArtifactBase64, recordArtifactUrl, getGallery
 import { getHostInfo } from './routes/hostInfo.ts';
 import { pusherAuth, relay } from './routes/realtime.ts';
 import { artifactUploadToken, videoUploadToken, uploadNotify } from './routes/blob.ts';
-import { rateLimitAi, rateLimitGeneral } from './lib/ratelimit.ts';
+import { rateLimitAi, rateLimitGeneral, rateLimitRealtime } from './lib/ratelimit.ts';
 
 const app = express();
 app.use(express.json({ limit: '4mb' }));
@@ -53,11 +53,11 @@ app.get('/api/host-info', getHostInfo);
 
 // The client uses a customHandler (see net/realtime.ts) that POSTs JSON, not Pusher's default
 // form-encoded ajax auth transport — the global express.json() middleware above already covers it.
-app.post('/api/pusher-auth', pusherAuth);
-app.post('/api/relay', relay);
+app.post('/api/pusher-auth', rateLimitRealtime, pusherAuth);
+app.post('/api/relay', rateLimitRealtime, relay);
 
-app.post('/api/blob/artifact-upload', artifactUploadToken);
-app.post('/api/blob/video-upload', videoUploadToken);
-app.post('/api/upload-notify', uploadNotify);
+app.post('/api/blob/artifact-upload', rateLimitGeneral, artifactUploadToken);
+app.post('/api/blob/video-upload', rateLimitGeneral, videoUploadToken);
+app.post('/api/upload-notify', rateLimitGeneral, uploadNotify);
 
 export default app;

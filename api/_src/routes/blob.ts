@@ -4,6 +4,7 @@
 import type { Request, Response } from 'express';
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { triggerMsg } from '../lib/pusherServer.ts';
+import { isValidSessionCode, isNonEmptyString, isOwnBlobUrl } from '../lib/validate.ts';
 
 export async function artifactUploadToken(req: Request, res: Response) {
   try {
@@ -45,8 +46,8 @@ export async function videoUploadToken(req: Request, res: Response) {
 
 export async function uploadNotify(req: Request, res: Response) {
   const { session, name, url } = req.body as { session?: string; name?: string; url?: string };
-  if (!session || !name || !url) {
-    res.status(400).json({ error: 'missing session, name, or url' });
+  if (!isValidSessionCode(session) || !isNonEmptyString(name, 200) || !isOwnBlobUrl(url)) {
+    res.status(400).json({ error: 'invalid session, name, or url' });
     return;
   }
   await triggerMsg(session, { type: 'upload-ready', url, name });

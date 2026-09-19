@@ -7,7 +7,10 @@ import type { Request, Response } from 'express';
 import { authorizeChannel, triggerMsg } from '../lib/pusherServer.ts';
 import { getEntry } from '../lib/galleryStore.ts';
 import { startBattle, castVote, lockMatch } from '../lib/battleStore.ts';
+import { isValidSessionCode, isValidEntryId, isNonEmptyString } from '../lib/validate.ts';
 import type { BattleEntrant, WsMsg } from '../../../shared/types.ts';
+
+const MAX_BATTLE_ENTRANTS = 32;
 
 export function pusherAuth(req: Request, res: Response) {
   const { socket_id: socketId, channel_name: channel, role } = req.body as {
@@ -25,14 +28,22 @@ export function pusherAuth(req: Request, res: Response) {
 
 export async function relay(req: Request, res: Response) {
   const { session, msg } = req.body as { session?: string; msg?: WsMsg };
-  if (!session || !msg) {
-    res.status(400).json({ error: 'missing session or msg' });
+  if (!isValidSessionCode(session) || !msg || typeof msg.type !== 'string') {
+    res.status(400).json({ error: 'missing or invalid session or msg' });
     return;
   }
 
   try {
     switch (msg.type) {
       case 'battle-start': {
+        if (!Array.isArray(msg.entryIds) || msg.entryIds.length === 0 || msg.entryIds.length > MAX_BATTLE_ENTRANTS) {
+          res.status(400).json({ error: 'invalid entryIds' });
+          return;
+        }
+        if (!msg.entryIds.every((id) => isValidEntryId(id))) {
+          res.status(400).json({ error: 'invalid entryIds' });
+          return;
+        }
         const entries = await Promise.all(msg.entryIds.map((id) => getEntry(id)));
         const entrants: BattleEntrant[] = entries
           .filter((e): e is NonNullable<typeof e> => !!e)
@@ -41,6 +52,10 @@ export async function relay(req: Request, res: Response) {
         break;
       }
       case 'vote':
+        if (!isNonEmptyString(msg.matchId, 20) || (msg.pick !== 'a' && msg.pick !== 'b') || !isNonEmptyString(msg.deviceToken, 100)) {
+          res.status(400).json({ error: 'invalid vote' });
+          return;
+        }
         await castVote(session, msg.matchId, msg.pick, msg.deviceToken);
         break;
       case 'battle-lock':

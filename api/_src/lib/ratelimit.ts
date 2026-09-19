@@ -1,11 +1,15 @@
-// Per-IP rate limiting (plan hardening pass). Two tiers:
+// Per-IP rate limiting (plan hardening pass). Three tiers:
 // - `rateLimitAi`: tight, for routes that call Cloudflare Workers AI. Cloudflare's free tier is
 //   a 10,000 neurons/day quota shared across the WHOLE account, not per-request — a bug that
 //   retry-loops, or someone hammering the public URL directly, could burn through an entire
 //   party's daily quota before anyone even starts dancing.
-// - `rateLimitGeneral`: looser, for the gallery/hall-of-fame routes — cheap Redis/Blob
-//   operations with no external quota at stake, but still unauthenticated and publicly
-//   reachable, so still worth capping against scraping or spam entries.
+// - `rateLimitGeneral`: looser, for the gallery/hall-of-fame/blob-token routes — cheap Redis/
+//   Blob operations with no external quota at stake, called once per save/upload action.
+// - `rateLimitRealtime`: loosest, for /api/relay and /api/pusher-auth specifically. These are
+//   the only routes multiple guests' phones all hit concurrently — a single WebRTC negotiation
+//   alone can fire 10-20 relay calls (one per ICE candidate), and a whole party is often behind
+//   one shared public IP via home WiFi NAT. A tighter per-IP limit here would throttle a
+//   legitimate lively battle round, not abuse.
 import type { Request, Response, NextFunction } from 'express';
 import { Ratelimit } from '@upstash/ratelimit';
 import { redis } from './redis.ts';
@@ -22,6 +26,12 @@ const generalRateLimit = new Ratelimit({
   redis,
   limiter: Ratelimit.slidingWindow(60, '1 m'),
   prefix: 'ratelimit:general',
+});
+
+const realtimeRateLimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(300, '1 m'),
+  prefix: 'ratelimit:realtime',
 });
 
 export function clientIp(req: Request): string {
@@ -48,5 +58,9 @@ export const rateLimitAi = makeMiddleware(
 );
 export const rateLimitGeneral = makeMiddleware(
   generalRateLimit,
+  'rate limit exceeded — too many requests from this network, try again shortly',
+);
+export const rateLimitRealtime = makeMiddleware(
+  realtimeRateLimit,
   'rate limit exceeded — too many requests from this network, try again shortly',
 );
