@@ -8,6 +8,7 @@
     "nanoid": "6.0.1",
     "pusher": "5.3.4",
     "@upstash/redis": "1.38.4",
+    "@upstash/ratelimit": "2.1.0",
     "@vercel/blob": "2.8.0"
   },
   "devDependencies": {

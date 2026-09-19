@@ -28,6 +28,7 @@ import { createGalleryEntry, uploadArtifactBase64, recordArtifactUrl, getGallery
 import { getHostInfo } from './routes/hostInfo.ts';
 import { pusherAuth, relay } from './routes/realtime.ts';
 import { artifactUploadToken, videoUploadToken, uploadNotify } from './routes/blob.ts';
+import { rateLimitAi } from './lib/ratelimit.ts';
 
 const app = express();
 app.use(express.json({ limit: '4mb' }));
@@ -36,9 +37,11 @@ app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 app.get('/api/itunes/search', searchSongs);
 app.get('/api/itunes/preview', proxyPreview);
-app.post('/api/analyze/quick', analyzeQuick);
-app.post('/api/analyze/full', analyzeFull);
-app.post('/api/generate-painting', generatePainting);
+// These three call Cloudflare Workers AI, which is billed as a 10,000/day quota shared across
+// the whole account — see ratelimit.ts for why they're the ones gated.
+app.post('/api/analyze/quick', rateLimitAi, analyzeQuick);
+app.post('/api/analyze/full', rateLimitAi, analyzeFull);
+app.post('/api/generate-painting', rateLimitAi, generatePainting);
 
 app.get('/api/gallery', getGallery);
 app.post('/api/gallery', createGalleryEntry);
