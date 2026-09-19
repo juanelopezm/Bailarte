@@ -6,3 +6,5 @@ client/public/mediapipe/
 dist/
 *.log
 .DS_Store
+.vercel
+.env*

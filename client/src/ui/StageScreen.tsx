@@ -5,7 +5,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { customAlphabet } from 'nanoid';
 import { getHealth, searchSongs } from '../net/api.ts';
-import { WsClient, storeStageSessionCode } from '../net/ws.ts';
+import { storeStageSessionCode } from '../net/ws.ts';
+import { createRealtimeClient, type RealtimeTransport } from '../net/transport.ts';
 import { RtcPeer } from '../net/rtc.ts';
 import { useAppStore } from '../state/store.ts';
 import { startCamera, stopCamera } from '../capture/camera.ts';
@@ -83,7 +84,7 @@ export function StageScreen() {
   const [phoneStream, setPhoneStream] = useState<MediaStream | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const rtcPeerRef = useRef<RtcPeer | null>(null);
-  const wsClientRef = useRef<WsClient | null>(null);
+  const wsClientRef = useRef<RealtimeTransport | null>(null);
   const wsConnected = useAppStore((s) => s.wsConnected);
   const setWsConnected = useAppStore((s) => s.setWsConnected);
 
@@ -153,7 +154,7 @@ export function StageScreen() {
 
   useEffect(() => {
     getHealth().then(() => setApiOk('ok')).catch(() => setApiOk('fail'));
-    const client = new WsClient();
+    const client = createRealtimeClient();
     wsClientRef.current = client;
     const offConn = client.onConnectionChange(setWsConnected);
     const offMsg = client.onMessage((msg) => {

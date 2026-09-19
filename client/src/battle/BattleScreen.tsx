@@ -1,7 +1,8 @@
 // Big-screen head-to-head art battle view (plan §L): VS layout, animated tally bars, countdown,
 // bracket progression, tie coin-flip, and the champion celebration.
 import { useEffect, useRef, useState } from 'react';
-import { WsClient, getStoredStageSessionCode } from '../net/ws.ts';
+import { getStoredStageSessionCode } from '../net/ws.ts';
+import { createRealtimeClient, type RealtimeTransport } from '../net/transport.ts';
 import { QRJoin } from '../ui/QRJoin.tsx';
 import { getGallery, uploadGalleryArtifact } from '../net/api.ts';
 import { composePoster, canvasToBlob } from '../poster/composePoster.ts';
@@ -28,14 +29,14 @@ export function BattleScreen() {
   const [now, setNow] = useState(Date.now());
   const [tieToast, setTieToast] = useState(false);
   const [championEntry, setChampionEntry] = useState<GalleryEntry | null>(null);
-  const clientRef = useRef<WsClient | null>(null);
+  const clientRef = useRef<RealtimeTransport | null>(null);
   const tallyByMatchRef = useRef<Map<string, Tally>>(new Map());
   const prevMatchesRef = useRef<Map<string, BattleMatch>>(new Map());
   const championPostedRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!sessionCode) return;
-    const client = new WsClient();
+    const client = createRealtimeClient();
     clientRef.current = client;
     const offConn = client.onConnectionChange((c) => {
       setConnected(c);
@@ -76,6 +77,16 @@ export function BattleScreen() {
     const id = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(id);
   }, [currentMatch?.endsAt]);
+
+  // The in-memory LAN server locks matches itself via setTimeout, but the serverless backend
+  // has no long-lived timer — the host's own screen (open for the whole battle anyway) is what
+  // calls time. Harmless no-op against the LAN server too: lockMatch() there already ignores a
+  // lock request for a match that's no longer 'voting'.
+  useEffect(() => {
+    if (!currentMatch?.endsAt || currentMatch.status !== 'voting') return;
+    if (currentMatch.endsAt - now > 0) return;
+    clientRef.current?.send({ type: 'battle-lock' });
+  }, [now, currentMatch?.endsAt, currentMatch?.status]);
 
   // Fetch the champion's full gallery entry, and build+save the champion-edition poster —
   // exactly once per championEntryId (plan §L: "champion poster saved to gallery").

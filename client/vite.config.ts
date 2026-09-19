@@ -7,6 +7,9 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 // ever talk to this one origin — see plan §A (single HTTPS origin).
 export default defineConfig({
   plugins: [react(), basicSsl()],
+  // Shares the repo-root .env with the server (see server/src/env.ts) instead of requiring a
+  // second client/.env — only VITE_-prefixed keys are ever exposed to the client bundle.
+  envDir: '..',
   server: {
     host: true,
     port: 5173,

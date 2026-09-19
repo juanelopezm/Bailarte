@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { getHostInfo } from '../net/api.ts';
+import { isHosted } from '../net/transport.ts';
 
 interface Props {
   sessionCode: string;
@@ -17,10 +18,11 @@ export function QRJoin({ sessionCode, peerCount, path = '/phone' }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    getHostInfo()
-      .then(({ lanUrl }) => {
-        if (cancelled || !lanUrl) return;
-        const url = `${lanUrl}/#${path}?s=${sessionCode}`;
+    const baseUrl = isHosted ? Promise.resolve(location.origin) : getHostInfo().then(({ lanUrl }) => lanUrl);
+    baseUrl
+      .then((base) => {
+        if (cancelled || !base) return;
+        const url = `${base}/#${path}?s=${sessionCode}`;
         setJoinUrl(url);
         return QRCode.toDataURL(url, { width: 220, margin: 1, color: { dark: '#000000', light: '#ffffff' } });
       })
@@ -53,8 +55,12 @@ export function QRJoin({ sessionCode, peerCount, path = '/phone' }: Props) {
       </button>
       {showHelp && (
         <p style={{ marginTop: 8, fontSize: 11, color: 'var(--ink-faint)', textAlign: 'left', lineHeight: 1.5 }}>
-          El teléfono debe estar en la <strong>misma WiFi</strong>. Al abrir, el navegador mostrará una advertencia de
-          certificado — en Safari: "Mostrar detalles → visitar este sitio web"; en Chrome: "Avanzado → Continuar".
+          {isHosted ? (
+            'Cualquier red funciona — solo necesita internet.'
+          ) : (
+            <>El teléfono debe estar en la <strong>misma WiFi</strong>. Al abrir, el navegador mostrará una advertencia de
+            certificado — en Safari: "Mostrar detalles → visitar este sitio web"; en Chrome: "Avanzado → Continuar".</>
+          )}
           {joinUrl && <><br />URL: <code style={{ fontSize: 10 }}>{joinUrl}</code></>}
         </p>
       )}

@@ -1,32 +1,22 @@
 // Phone video upload — the no-WebRTC fallback, and a way for a second dancer's clip to enter
-// the pipeline (plan §K). Reads the file as base64 and POSTs it; the server notifies the host.
+// the pipeline (plan §K). uploadVideo() picks base64-to-Express (LAN) or a direct-to-Blob
+// upload (hosted) depending on deployment mode — see net/api.ts.
 import { useState } from 'react';
-import type { WsClient } from '../net/ws.ts';
+import type { RealtimeTransport } from '../net/transport.ts';
 import { uploadVideo } from '../net/api.ts';
 
 interface Props {
-  client: WsClient;
+  client: RealtimeTransport;
   sessionCode: string;
 }
 
-function readFileAsBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
 export function PhoneUpload({ sessionCode }: Props) {
-  const [status, setStatus] = useState<'idle' | 'reading' | 'uploading' | 'done' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle');
 
   async function handleFile(file: File) {
-    setStatus('reading');
+    setStatus('uploading');
     try {
-      const base64 = await readFileAsBase64(file);
-      setStatus('uploading');
-      await uploadVideo(sessionCode, file.name, base64);
+      await uploadVideo(sessionCode, file);
       setStatus('done');
     } catch (err) {
       console.error('[phoneupload] failed', err);
@@ -45,14 +35,13 @@ export function PhoneUpload({ sessionCode }: Props) {
             style={{ display: 'block', padding: '1.25rem', borderRadius: 16, fontSize: 16, cursor: 'pointer' }}
           >
             {status === 'idle' && '📤 Elegir video'}
-            {status === 'reading' && 'Leyendo archivo…'}
             {status === 'uploading' && 'Enviando…'}
             {status === 'error' && '❌ Error — intenta de nuevo'}
             <input
               type="file"
               accept="video/*"
               onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
-              disabled={status === 'reading' || status === 'uploading'}
+              disabled={status === 'uploading'}
               style={{ display: 'none' }}
             />
           </label>

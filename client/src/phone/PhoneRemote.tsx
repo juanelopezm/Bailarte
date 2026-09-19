@@ -1,8 +1,8 @@
 // Phone as a remote control for the Stage (plan §K). Sends 'control' messages the host acts on.
-import type { WsClient } from '../net/ws.ts';
+import type { RealtimeTransport } from '../net/transport.ts';
 
 interface Props {
-  client: WsClient;
+  client: RealtimeTransport;
 }
 
 export function PhoneRemote({ client }: Props) {

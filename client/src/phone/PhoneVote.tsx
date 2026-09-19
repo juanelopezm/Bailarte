@@ -2,7 +2,8 @@
 // switches your pick until the match locks. Server is authoritative for tallies — this only
 // renders whatever it broadcasts.
 import { useEffect, useRef, useState } from 'react';
-import { WsClient, getSessionCodeFromHash, getDeviceToken } from '../net/ws.ts';
+import { getSessionCodeFromHash, getDeviceToken } from '../net/ws.ts';
+import { createRealtimeClient, type RealtimeTransport } from '../net/transport.ts';
 import type { BattleMatch, BattleState } from '@shared/types.ts';
 
 export function PhoneVote() {
@@ -12,12 +13,12 @@ export function PhoneVote() {
   const [tally, setTally] = useState<{ matchId: string; a: number; b: number; voters: number } | null>(null);
   const [myPick, setMyPick] = useState<'a' | 'b' | null>(null);
   const [now, setNow] = useState(Date.now());
-  const clientRef = useRef<WsClient | null>(null);
+  const clientRef = useRef<RealtimeTransport | null>(null);
   const deviceToken = useRef(getDeviceToken()).current;
 
   useEffect(() => {
     if (!sessionCode) return;
-    const client = new WsClient();
+    const client = createRealtimeClient();
     clientRef.current = client;
     const offConn = client.onConnectionChange((c) => {
       setConnected(c);

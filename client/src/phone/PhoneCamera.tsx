@@ -1,10 +1,10 @@
 // Phone as a second camera angle over WebRTC (plan §K). The phone is always the offerer.
 import { useEffect, useRef, useState } from 'react';
-import type { WsClient } from '../net/ws.ts';
+import type { RealtimeTransport } from '../net/transport.ts';
 import { RtcPeer } from '../net/rtc.ts';
 
 interface Props {
-  client: WsClient;
+  client: RealtimeTransport;
   sessionCode: string;
 }
 
