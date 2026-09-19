@@ -75,6 +75,10 @@ export function initHub(wss: WebSocketServer) {
           currentPeer = peer;
           send(ws, { type: 'joined', session: room.code, role: msg.role, peers: room.peers.size });
           broadcast(room, { type: 'peer-joined', role: msg.role }, ws);
+          // A voter joining mid-battle, or a host reconnecting after navigating between
+          // screens, has no other way to learn the current match — push it on every join.
+          const battleState = getBattleState(room.code);
+          if (battleState) send(ws, { type: 'battle-state', state: battleState });
           break;
         }
 
@@ -127,19 +131,6 @@ export function initHub(wss: WebSocketServer) {
         case 'battle-lock': {
           if (!currentRoom) return;
           lockMatch(currentRoom.code);
-          break;
-        }
-
-        case 'battle-state': {
-          if (!currentRoom) return;
-          const state = getBattleState(currentRoom.code);
-          if (state) send(ws, { type: 'battle-state', state });
-          break;
-        }
-
-        case 'tally': {
-          if (!currentRoom) return;
-          broadcast(currentRoom, msg);
           break;
         }
 

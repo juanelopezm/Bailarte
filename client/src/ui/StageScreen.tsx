@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { customAlphabet } from 'nanoid';
 import { getHealth, searchSongs } from '../net/api.ts';
-import { WsClient } from '../net/ws.ts';
+import { WsClient, storeStageSessionCode } from '../net/ws.ts';
 import { RtcPeer } from '../net/rtc.ts';
 import { useAppStore } from '../state/store.ts';
 import { startCamera, stopCamera } from '../capture/camera.ts';
@@ -26,12 +26,13 @@ import { KeyframeCapture } from '../capture/keyframes.ts';
 import { processUploadedVideo } from '../capture/offline.ts';
 import { analyzeQuick, analyzeFull, generatePainting, createGalleryEntry, uploadGalleryArtifact, type AnalysisHints } from '../net/api.ts';
 import { composePoster, canvasToBlob } from '../poster/composePoster.ts';
+import { makeThumbnail } from '../poster/thumbnail.ts';
 import { applyPalette } from './theme.ts';
 import { computeStats } from '../capture/stats.ts';
 import { RevealFlow, type RevealStage } from './RevealFlow.tsx';
 import { SculptureView } from '../sculpture/SculptureView.tsx';
 import type { FrameFeatures } from '../capture/features.ts';
-import type { DanceStats, MotionTape, SongInfo, VisionAnalysis } from '@shared/types.ts';
+import type { DanceStats, GalleryEntry, MotionTape, SongInfo, VisionAnalysis } from '@shared/types.ts';
 
 const sessionCodeAlphabet = customAlphabet('23456789ABCDEFGHJKMNPQRSTUVWXYZ', 4);
 
@@ -75,6 +76,7 @@ export function StageScreen() {
   const [usingFallbackPainting, setUsingFallbackPainting] = useState(false);
   const [dancerName, setDancerName] = useState('');
   const [galleryState, setGalleryState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [sessionEntries, setSessionEntries] = useState<GalleryEntry[]>([]);
   const sculptureSnapshotRef = useRef<(() => string | null) | null>(null);
   const [sessionCode] = useState(sessionCodeAlphabet);
   const [peerCount, setPeerCount] = useState(0);
@@ -144,6 +146,10 @@ export function StageScreen() {
       setUploadProgress(null);
     }
   }
+
+  useEffect(() => {
+    storeStageSessionCode(sessionCode);
+  }, [sessionCode]);
 
   useEffect(() => {
     getHealth().then(() => setApiOk('ok')).catch(() => setApiOk('fail'));
@@ -466,16 +472,29 @@ export function StageScreen() {
         reader.readAsDataURL(posterBlob);
       });
 
+      const thumbBase64 = await makeThumbnail(paintingUrl);
+
       await Promise.all([
         uploadGalleryArtifact(entry.id, 'painting.png', paintingUrl.split(',')[1] ?? ''),
         uploadGalleryArtifact(entry.id, 'poster.png', posterBase64),
+        uploadGalleryArtifact(entry.id, 'thumb.jpg', thumbBase64),
       ]);
 
+      setSessionEntries((prev) => [
+        ...prev,
+        { ...entry, files: { ...entry.files, painting: `/artifacts/${entry.id}/painting.png`, thumb: `/artifacts/${entry.id}/thumb.jpg` } },
+      ]);
       setGalleryState('saved');
     } catch (err) {
       console.error('[gallery] save failed', err);
       setGalleryState('error');
     }
+  }
+
+  function handleStartBattle() {
+    if (sessionEntries.length < 2) return;
+    wsClientRef.current?.send({ type: 'battle-start', entryIds: sessionEntries.map((e) => e.id) });
+    location.hash = '/battle';
   }
 
   async function handleReplay() {
@@ -649,6 +668,22 @@ export function StageScreen() {
           ) : (
             <p style={{ margin: 0, fontSize: 15 }}>✅ Guardado en la galería como "<strong>{dancerName}</strong>"</p>
           )}
+        </div>
+      )}
+
+      {sessionEntries.length >= 2 && (
+        <div className="card" style={{ textAlign: 'center', margin: '0 auto 2rem', padding: '1.25rem 1.5rem', maxWidth: 480 }}>
+          <p style={{ margin: '0 0 10px', fontSize: 14, color: 'var(--ink-dim)' }}>
+            {sessionEntries.length} obras guardadas esta fiesta — ¡hora de la batalla!
+          </p>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', margin: '0 0 12px' }}>
+            {sessionEntries.map((e) => (
+              <img key={e.id} src={e.files.thumb} alt={e.dancerName} title={e.dancerName} style={{ width: 48, height: 48, borderRadius: 10, objectFit: 'cover' }} />
+            ))}
+          </div>
+          <button className="btn-primary" onClick={handleStartBattle} style={{ padding: '0.6rem 1.75rem', borderRadius: 999, fontSize: 15 }}>
+            🏆 Iniciar batalla de arte
+          </button>
         </div>
       )}
 

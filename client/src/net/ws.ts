@@ -6,6 +6,27 @@ export type WsListener = (msg: WsMsg) => void;
 
 const DEVICE_TOKEN_KEY = 'danza-device-token';
 
+/** Reads "?s=CODE" out of a hash route like "#/vote?s=ABCD" (used by every phone screen). */
+export function getSessionCodeFromHash(): string | null {
+  const hash = location.hash;
+  const qIdx = hash.indexOf('?');
+  if (qIdx === -1) return null;
+  return new URLSearchParams(hash.slice(qIdx + 1)).get('s');
+}
+
+// The Stage's session code needs to survive a hash-route navigation from "/" to "/battle" —
+// that unmounts StageScreen (and its WsClient) and mounts a brand-new BattleScreen component
+// with no props, so sessionStorage is the only thing carrying the code across.
+const STAGE_SESSION_KEY = 'danza-stage-session';
+
+export function storeStageSessionCode(code: string) {
+  sessionStorage.setItem(STAGE_SESSION_KEY, code);
+}
+
+export function getStoredStageSessionCode(): string | null {
+  return sessionStorage.getItem(STAGE_SESSION_KEY);
+}
+
 export function getDeviceToken(): string {
   let token = localStorage.getItem(DEVICE_TOKEN_KEY);
   if (!token) {

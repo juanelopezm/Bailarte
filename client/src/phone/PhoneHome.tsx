@@ -1,21 +1,14 @@
 // Role picker shown after a phone scans the QR and joins a session (plan §K).
 import { useEffect, useRef, useState } from 'react';
-import { WsClient } from '../net/ws.ts';
+import { WsClient, getSessionCodeFromHash } from '../net/ws.ts';
 import { PhoneCamera } from './PhoneCamera.tsx';
 import { PhoneRemote } from './PhoneRemote.tsx';
 import { PhoneUpload } from './PhoneUpload.tsx';
 
 type Role = 'camera' | 'remote' | 'upload' | null;
 
-function getSessionCode(): string | null {
-  const hash = location.hash; // "#/phone?s=ABCD"
-  const qIdx = hash.indexOf('?');
-  if (qIdx === -1) return null;
-  return new URLSearchParams(hash.slice(qIdx + 1)).get('s');
-}
-
 export function PhoneHome() {
-  const [sessionCode] = useState(getSessionCode);
+  const [sessionCode] = useState(getSessionCodeFromHash);
   const [role, setRole] = useState<Role>(null);
   const [connected, setConnected] = useState(false);
   const clientRef = useRef<WsClient | null>(null);

@@ -6,9 +6,11 @@ import { getHostInfo } from '../net/api.ts';
 interface Props {
   sessionCode: string;
   peerCount: number;
+  /** Which phone route the QR points at — the phone-trio picker, or the battle voting screen. */
+  path?: '/phone' | '/vote';
 }
 
-export function QRJoin({ sessionCode, peerCount }: Props) {
+export function QRJoin({ sessionCode, peerCount, path = '/phone' }: Props) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [joinUrl, setJoinUrl] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
@@ -18,7 +20,7 @@ export function QRJoin({ sessionCode, peerCount }: Props) {
     getHostInfo()
       .then(({ lanUrl }) => {
         if (cancelled || !lanUrl) return;
-        const url = `${lanUrl}/#/phone?s=${sessionCode}`;
+        const url = `${lanUrl}/#${path}?s=${sessionCode}`;
         setJoinUrl(url);
         return QRCode.toDataURL(url, { width: 220, margin: 1, color: { dark: '#000000', light: '#ffffff' } });
       })
@@ -27,7 +29,7 @@ export function QRJoin({ sessionCode, peerCount }: Props) {
       })
       .catch((err) => console.warn('[qrjoin] failed to load host info', err));
     return () => { cancelled = true; };
-  }, [sessionCode]);
+  }, [sessionCode, path]);
 
   if (!qrDataUrl) {
     return (
