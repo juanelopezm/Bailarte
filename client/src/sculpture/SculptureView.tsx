@@ -14,6 +14,9 @@ import type { MotionTape } from '@shared/types.ts';
 interface Props {
   tape: MotionTape;
   palette: string[];
+  /** Called once rendering starts with a function that snapshots the current frame as a PNG
+   * data URL — used by the poster composer (plan §J: "small sculpture snapshot"). */
+  onSnapshotReady?: (getSnapshot: () => string | null) => void;
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -25,7 +28,7 @@ function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function SculptureView({ tape, palette }: Props) {
+export function SculptureView({ tape, palette, onSnapshotReady }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const groupRef = useRef<THREE.Group | null>(null);
   const [mode, setMode] = useState<UnfurlMode>('orbit');
@@ -38,7 +41,7 @@ export function SculptureView({ tape, palette }: Props) {
     const width = container.clientWidth || 600;
     const height = 400;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
     container.innerHTML = '';
@@ -68,6 +71,14 @@ export function SculptureView({ tape, palette }: Props) {
     const group = buildSculpture(tape, palette, mode);
     groupRef.current = group;
     scene.add(group);
+
+    onSnapshotReady?.(() => {
+      try {
+        return renderer.domElement.toDataURL('image/png');
+      } catch {
+        return null;
+      }
+    });
 
     let raf = 0;
     function animate() {

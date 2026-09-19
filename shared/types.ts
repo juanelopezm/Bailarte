@@ -69,6 +69,8 @@ export interface GalleryFiles {
   poster?: string;
   thumb?: string;
   sculptureGlb?: string;
+  /** Champion-edition poster variant, set when this entry wins an art battle (plan §L). */
+  champion?: string;
 }
 
 export interface GalleryEntry {

@@ -8,6 +8,7 @@ import { initHub } from './wsHub.ts';
 import { searchSongs, proxyPreview } from './routes/itunes.ts';
 import { analyzeQuick, analyzeFull } from './routes/analyze.ts';
 import { generatePainting } from './routes/painting.ts';
+import { createGalleryEntry, uploadArtifact, getGallery, getHallOfFame } from './routes/gallery.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = path.resolve(__dirname, '..', 'data');
@@ -25,6 +26,10 @@ app.get('/api/itunes/preview', proxyPreview);
 app.post('/api/analyze/quick', analyzeQuick);
 app.post('/api/analyze/full', analyzeFull);
 app.post('/api/generate-painting', generatePainting);
+app.get('/api/gallery', getGallery);
+app.post('/api/gallery', createGalleryEntry);
+app.post('/api/gallery/:id/artifact/:name', uploadArtifact);
+app.get('/api/halloffame', getHallOfFame);
 
 // Static-served artifacts (posters, paintings, sculpture exports) — see plan §L.
 app.use('/artifacts', express.static(path.join(dataDir, 'artifacts')));

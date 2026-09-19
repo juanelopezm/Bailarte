@@ -19,7 +19,8 @@ import { BeatDetector } from '../audio/beats.ts';
 import { analyzePreviewBpm } from '../audio/preview.ts';
 import { getGenrePreset } from '@shared/palettes.ts';
 import { KeyframeCapture } from '../capture/keyframes.ts';
-import { analyzeQuick, analyzeFull, generatePainting, type AnalysisHints } from '../net/api.ts';
+import { analyzeQuick, analyzeFull, generatePainting, createGalleryEntry, uploadGalleryArtifact, type AnalysisHints } from '../net/api.ts';
+import { composePoster, canvasToBlob } from '../poster/composePoster.ts';
 import { applyPalette } from './theme.ts';
 import { computeStats } from '../capture/stats.ts';
 import { RevealFlow, type RevealStage } from './RevealFlow.tsx';
@@ -61,8 +62,12 @@ export function StageScreen() {
   const [analysis, setAnalysis] = useState<VisionAnalysis | null>(null);
   const [revealStage, setRevealStage] = useState<RevealStage | null>(null);
   const [danceStats, setDanceStats] = useState<DanceStats | null>(null);
-  const [paintingUrl, setPaintingUrl] = useState<string | null>(null);
+  const [paintingBase64, setPaintingBase64] = useState<string | null>(null);
+  const paintingUrl = paintingBase64 ? `data:image/png;base64,${paintingBase64}` : null;
   const [usingFallbackPainting, setUsingFallbackPainting] = useState(false);
+  const [dancerName, setDancerName] = useState('');
+  const [galleryState, setGalleryState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const sculptureSnapshotRef = useRef<(() => string | null) | null>(null);
   const wsConnected = useAppStore((s) => s.wsConnected);
   const setWsConnected = useAppStore((s) => s.setWsConnected);
 
@@ -292,7 +297,8 @@ export function StageScreen() {
     setReplayUrl(null);
     setRevealStage(null);
     setDanceStats(null);
-    setPaintingUrl(null);
+    setPaintingBase64(null);
+    setGalleryState('idle');
     setUsingFallbackPainting(false);
     dancingRef.current = true;
     setDancing(true);
@@ -329,25 +335,59 @@ export function StageScreen() {
 
     // Deterministic hi-res replay — always available, doubles as the Gemini input image.
     const replay = replayTape(finished, finalAnalysis.colorPalette, 2048, 2560);
-    const replayBlob = await replay.toBlob();
-    const replayObjectUrl = URL.createObjectURL(replayBlob);
+    const replayBase64 = replay.toPngBase64();
 
     setRevealStage('painting');
     try {
-      const result = await generatePainting(danceIdRef.current, finalAnalysis, stats, replay.toPngBase64());
+      const result = await generatePainting(danceIdRef.current, finalAnalysis, stats, replayBase64);
       if (result.fallback || !result.imageBase64) {
-        setPaintingUrl(replayObjectUrl);
+        setPaintingBase64(replayBase64);
         setUsingFallbackPainting(true);
       } else {
-        setPaintingUrl(`data:image/png;base64,${result.imageBase64}`);
+        setPaintingBase64(result.imageBase64);
         setUsingFallbackPainting(false);
       }
     } catch (err) {
       console.warn('[painting] generation failed, using hi-res replay fallback', err);
-      setPaintingUrl(replayObjectUrl);
+      setPaintingBase64(replayBase64);
       setUsingFallbackPainting(true);
     }
     setRevealStage('done');
+  }
+
+  async function handleSaveToGallery() {
+    if (!analysis || !danceStats || !paintingUrl || !dancerName.trim()) return;
+    setGalleryState('saving');
+    try {
+      const entry = await createGalleryEntry(dancerName.trim(), song, analysis, danceStats);
+
+      const sculptureSnapshot = sculptureSnapshotRef.current?.() ?? null;
+      const poster = await composePoster({
+        paintingUrl,
+        analysis,
+        song,
+        stats: danceStats,
+        dancerName: dancerName.trim(),
+        sculptureSnapshotUrl: sculptureSnapshot,
+      });
+      const posterBlob = await canvasToBlob(poster);
+      const posterBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
+        reader.onerror = reject;
+        reader.readAsDataURL(posterBlob);
+      });
+
+      await Promise.all([
+        uploadGalleryArtifact(entry.id, 'painting.png', paintingUrl.split(',')[1] ?? ''),
+        uploadGalleryArtifact(entry.id, 'poster.png', posterBase64),
+      ]);
+
+      setGalleryState('saved');
+    } catch (err) {
+      console.error('[gallery] save failed', err);
+      setGalleryState('error');
+    }
   }
 
   async function handleReplay() {
@@ -466,7 +506,36 @@ export function StageScreen() {
       )}
 
       {revealStage === 'done' && tape && (
-        <SculptureView tape={tape} palette={analysis?.colorPalette ?? DEFAULT_PALETTE} />
+        <SculptureView
+          tape={tape}
+          palette={analysis?.colorPalette ?? DEFAULT_PALETTE}
+          onSnapshotReady={(getSnapshot) => { sculptureSnapshotRef.current = getSnapshot; }}
+        />
+      )}
+
+      {revealStage === 'done' && analysis && danceStats && (
+        <div style={{ textAlign: 'center', margin: '1rem 0 2rem' }}>
+          {galleryState !== 'saved' ? (
+            <>
+              <input
+                value={dancerName}
+                onChange={(e) => setDancerName(e.target.value)}
+                placeholder="Tu nombre"
+                style={{ padding: '0.5rem 1rem', borderRadius: 999, border: '1px solid #444', background: '#1a1a1a', color: '#eee', fontSize: 14, marginRight: 8 }}
+              />
+              <button
+                onClick={handleSaveToGallery}
+                disabled={!dancerName.trim() || galleryState === 'saving'}
+                style={{ padding: '0.5rem 1.5rem', borderRadius: 999 }}
+              >
+                {galleryState === 'saving' ? 'Guardando…' : '💾 Guardar en la galería'}
+              </button>
+              {galleryState === 'error' && <p style={{ color: '#e8615a', fontSize: 13 }}>Error al guardar — intenta de nuevo.</p>}
+            </>
+          ) : (
+            <p style={{ opacity: 0.8 }}>✅ Guardado en la galería como "{dancerName}"</p>
+          )}
+        </div>
       )}
 
       {replayUrl && (

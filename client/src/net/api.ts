@@ -1,6 +1,6 @@
 // Thin fetch wrappers for /api/* — the client never talks to the server on any origin/port
 // other than the one it was loaded from (Vite proxies /api -> 127.0.0.1:8787). See plan §A.
-import type { DanceStats, SongInfo, VisionAnalysis } from '@shared/types.ts';
+import type { DanceStats, GalleryEntry, SongInfo, VisionAnalysis } from '@shared/types.ts';
 
 export async function searchSongs(term: string): Promise<SongInfo[]> {
   const res = await fetch(`/api/itunes/search?term=${encodeURIComponent(term)}`);
@@ -54,6 +54,47 @@ export async function generatePainting(
     body: JSON.stringify({ session, analysis, stats, gesturePngBase64 }),
   });
   if (!res.ok) throw new Error(`generate-painting failed: ${res.status}`);
+  return res.json();
+}
+
+export async function createGalleryEntry(
+  dancerName: string,
+  song: SongInfo | null,
+  analysis: VisionAnalysis,
+  stats: DanceStats,
+): Promise<GalleryEntry> {
+  const res = await fetch('/api/gallery', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ dancerName, song, analysis, stats }),
+  });
+  if (!res.ok) throw new Error(`create gallery entry failed: ${res.status}`);
+  return res.json();
+}
+
+export async function uploadGalleryArtifact(
+  entryId: string,
+  name: 'painting.png' | 'poster.png' | 'thumb.jpg' | 'sculpture.glb' | 'champion.png',
+  base64: string,
+): Promise<{ url: string }> {
+  const res = await fetch(`/api/gallery/${entryId}/artifact/${name}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ base64 }),
+  });
+  if (!res.ok) throw new Error(`upload artifact failed: ${res.status}`);
+  return res.json();
+}
+
+export async function getGallery(): Promise<GalleryEntry[]> {
+  const res = await fetch('/api/gallery');
+  if (!res.ok) throw new Error(`get gallery failed: ${res.status}`);
+  return res.json();
+}
+
+export async function getHallOfFame(): Promise<GalleryEntry[]> {
+  const res = await fetch('/api/halloffame');
+  if (!res.ok) throw new Error(`get hall of fame failed: ${res.status}`);
   return res.json();
 }
 
