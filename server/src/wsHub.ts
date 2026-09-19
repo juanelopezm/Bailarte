@@ -2,6 +2,8 @@
 // relay, and battle broadcast. See plan §K (phone signaling) and §L (battle).
 import type { WebSocket, WebSocketServer } from 'ws';
 import type { WsMsg, WsRole } from '../../shared/types.ts';
+import { startBattle, castVote, lockMatch, getBattleState } from './battle.ts';
+import { getEntry } from './gallery.ts';
 
 interface Peer {
   ws: WebSocket;
@@ -97,9 +99,44 @@ export function initHub(wss: WebSocketServer) {
           break;
         }
 
-        case 'vote':
-        case 'battle-state':
-        case 'quick-analysis':
+        case 'quick-analysis': {
+          if (!currentRoom) return;
+          broadcast(currentRoom, msg);
+          break;
+        }
+
+        case 'battle-start': {
+          if (!currentRoom) return;
+          const entrants = msg.entryIds
+            .map((id) => {
+              const entry = getEntry(id);
+              if (!entry) return null;
+              return { entryId: entry.id, thumb: entry.files.thumb ?? '', dancerName: entry.dancerName };
+            })
+            .filter((e): e is { entryId: string; thumb: string; dancerName: string } => !!e);
+          startBattle(currentRoom.code, entrants);
+          break;
+        }
+
+        case 'vote': {
+          if (!currentRoom) return;
+          castVote(currentRoom.code, msg.matchId, msg.pick, msg.deviceToken);
+          break;
+        }
+
+        case 'battle-lock': {
+          if (!currentRoom) return;
+          lockMatch(currentRoom.code);
+          break;
+        }
+
+        case 'battle-state': {
+          if (!currentRoom) return;
+          const state = getBattleState(currentRoom.code);
+          if (state) send(ws, { type: 'battle-state', state });
+          break;
+        }
+
         case 'tally': {
           if (!currentRoom) return;
           broadcast(currentRoom, msg);

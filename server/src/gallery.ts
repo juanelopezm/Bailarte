@@ -69,3 +69,12 @@ export function updateEntryFiles(id: string, files: Partial<GalleryEntry['files'
 export function listChampions(): GalleryEntry[] {
   return listEntries().filter((e) => !!e.championOf);
 }
+
+export function setChampion(id: string, session: string): GalleryEntry | undefined {
+  const entries = load();
+  const entry = entries.find((e) => e.id === id);
+  if (!entry) return undefined;
+  entry.championOf = session;
+  save(entries);
+  return entry;
+}

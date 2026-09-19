@@ -114,6 +114,8 @@ export type WsMsg =
   | { type: 'rtc'; sdp?: RtcSdpLike; candidate?: RtcIceCandidateLike }
   | { type: 'control'; action: 'start' | 'stop' | 'surprise' | 'pick'; payload?: unknown }
   | { type: 'upload-ready'; url: string; name: string }
+  | { type: 'battle-start'; entryIds: string[] }
+  | { type: 'battle-lock' }
   | { type: 'vote'; matchId: string; pick: 'a' | 'b'; deviceToken: string }
   | { type: 'tally'; matchId: string; a: number; b: number; voters: number }
   | { type: 'quick-analysis'; analysis: VisionAnalysis }
