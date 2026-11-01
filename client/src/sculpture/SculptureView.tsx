@@ -92,6 +92,12 @@ export function SculptureView({ tape, palette, onSnapshotReady }: Props) {
       cancelAnimationFrame(raf);
       controls.dispose();
       renderer.dispose();
+      // dispose() frees GPU resources but keeps the GL context handle alive; this view remounts
+      // a fresh renderer on every tape/palette/mode change (including each orbit/stream/spiral
+      // click), and without forceContextLoss() those old contexts pile up until Chrome's abuse
+      // guard permanently blocks new WebGL context creation on the page ("page caused context
+      // loss and was blocked") — confirmed live after 2 dance cycles.
+      renderer.forceContextLoss();
       pmrem.dispose();
       group.traverse((obj) => {
         if (obj instanceof THREE.Mesh) {
