@@ -10,7 +10,7 @@ import { createRealtimeClient, type RealtimeTransport } from '../net/transport.t
 import { RtcPeer } from '../net/rtc.ts';
 import { useAppStore } from '../state/store.ts';
 import { startCamera, stopCamera } from '../capture/camera.ts';
-import { initPose, isPoseReady, detectPose } from '../capture/pose.ts';
+import { initPose, isPoseReady, detectPose, closePose } from '../capture/pose.ts';
 import { drawSkeleton } from '../capture/skeletonOverlay.ts';
 import { MotionTapeRecorder } from '../capture/motionTape.ts';
 import { FeatureTracker } from '../capture/features.ts';
@@ -371,6 +371,15 @@ export function StageScreen() {
   }
 
   function handleStart() {
+    // Re-open the pose detector if a previous dance's reveal flow closed it (see
+    // revealFromTape) — this is the "next guest's turn" path within the same session.
+    if (!isPoseReady()) {
+      setPoseStatus('loading');
+      initPose()
+        .then(() => setPoseStatus('ready'))
+        .catch((err) => { console.error('[pose] re-init failed', err); setPoseStatus('error'); });
+    }
+
     const recorder = new MotionTapeRecorder('session');
     recorder.start();
     recorderRef.current = recorder;
@@ -397,6 +406,15 @@ export function StageScreen() {
   async function revealFromTape(finished: MotionTape, danceId: string, keyframeSource: KeyframeCapture, hints: AnalysisHints) {
     setTape(finished);
     if (finished.frames.length === 0) return;
+
+    // Fully release MediaPipe's WebGL context now that the tape is captured — nothing needs
+    // live pose data past this point. Without this, the pose detector's context stays alive
+    // through the whole reveal flow, and when SculptureView opens its own WebGL context for
+    // Three.js, the browser's per-page context limit forces one out from under the other
+    // (confirmed live: this crashed the sculpture renderer with CONTEXT_LOST_WEBGL). Re-opened
+    // in handleStart() if the host dances again this session.
+    closePose();
+    setPoseStatus('loading');
 
     const stats = computeStats(finished);
     setDanceStats(stats);
