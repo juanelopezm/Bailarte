@@ -82,11 +82,16 @@ async function runCloudflare(imageBase64: string, hints: AnalysisHints, retry: b
     body: JSON.stringify({ image, prompt: buildPrompt(hints, retry), max_tokens: 512 }),
   });
 
-  const data = (await res.json()) as { result?: { response?: string }; success?: boolean; errors?: unknown };
-  if (!res.ok || !data.result?.response) {
+  const data = (await res.json()) as { result?: { response?: unknown }; success?: boolean; errors?: unknown };
+  if (!res.ok || data.result?.response === undefined || data.result?.response === null) {
     throw new Error(`Cloudflare vision request failed: ${JSON.stringify(data).slice(0, 300)}`);
   }
-  return extractJson(data.result.response);
+  // The model's "response" field is a string in the common case, but has been observed coming
+  // back as an already-parsed object in some responses — handle both rather than assuming .trim()
+  // always exists (that assumption crashed real requests, silently falling back every time).
+  const { response } = data.result;
+  if (typeof response !== 'string') return response;
+  return extractJson(response);
 }
 
 export async function analyzeVision(

@@ -60,4 +60,10 @@ app.post('/api/blob/artifact-upload', rateLimitGeneral, artifactUploadToken);
 app.post('/api/blob/video-upload', rateLimitGeneral, videoUploadToken);
 app.post('/api/upload-notify', rateLimitGeneral, uploadNotify);
 
+// Express 5 forwards async errors here; return JSON instead of an opaque platform 500.
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('[api] unhandled', err);
+  res.status(500).json({ error: 'internal error' });
+});
+
 export default app;

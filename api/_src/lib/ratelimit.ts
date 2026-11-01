@@ -42,12 +42,18 @@ export function clientIp(req: Request): string {
 
 function makeMiddleware(limiter: Ratelimit, message: string) {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const { success, remaining, reset } = await limiter.limit(clientIp(req));
-    if (!success) {
-      res.status(429).json({ error: message, retryAfterMs: Math.max(0, reset - Date.now()) });
-      return;
+    try {
+      const { success, remaining, reset } = await limiter.limit(clientIp(req));
+      if (!success) {
+        res.status(429).json({ error: message, retryAfterMs: Math.max(0, reset - Date.now()) });
+        return;
+      }
+      res.setHeader('x-ratelimit-remaining', String(remaining));
+    } catch (err) {
+      // Fail open: if Redis is unreachable or misconfigured (missing KV_REST_API_URL/TOKEN),
+      // a rate-limiter outage must not take down pusher-auth, analysis or painting.
+      console.error('[ratelimit] limiter unavailable, failing open', err);
     }
-    res.setHeader('x-ratelimit-remaining', String(remaining));
     next();
   };
 }

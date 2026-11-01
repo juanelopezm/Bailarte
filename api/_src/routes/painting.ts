@@ -46,7 +46,12 @@ export async function generatePainting(req: Request, res: Response) {
   const prompt = buildPrompt(analysis, stats);
   console.log('[painting] prompt:', prompt);
 
-  const buffer = await paintFromPrompt(prompt);
+  let buffer: Buffer | null = null;
+  try {
+    buffer = await paintFromPrompt(prompt);
+  } catch (err) {
+    console.error('[painting] generation threw, using client fallback', err);
+  }
   if (!buffer) {
     res.json({ fallback: true });
     return;
